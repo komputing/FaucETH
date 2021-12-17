@@ -1,0 +1,46 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version "$kotlin_version"
+    id 'application'
+}
+
+group 'org.komputing.fauceth'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+    maven { url 'https://www.jitpack.io' }
+}
+
+application {
+    mainClass.set("org.komputing.fauceth.ApplicationKt")
+}
+
+dependencies {
+    implementation "io.ktor:ktor-server-core:$ktor_version"
+    implementation "io.ktor:ktor-server-netty:$ktor_version"
+    implementation "io.ktor:ktor-html-builder:$ktor_version"
+    implementation "io.ktor:ktor-freemarker:$ktor_version"
+    implementation "ch.qos.logback:logback-classic:$logback_version"
+
+
+    implementation "com.github.walleth.kethereum:eip155:${KETHEREUM_VERSION}"
+    implementation "com.github.walleth.kethereum:erc681:${KETHEREUM_VERSION}"
+    implementation "com.github.walleth.kethereum:erc1450:${KETHEREUM_VERSION}"
+    implementation "com.github.walleth.kethereum:extensions_transactions:${KETHEREUM_VERSION}"
+    implementation "com.github.walleth.kethereum:flows:${KETHEREUM_VERSION}"
+    implementation "com.github.walleth.kethereum:rpc:${KETHEREUM_VERSION}"
+    implementation "com.github.walleth.kethereum:rpc_min3:${KETHEREUM_VERSION}"
+    implementation "com.github.walleth.kethereum:model:${KETHEREUM_VERSION}"
+    implementation "com.github.walleth.kethereum:crypto:${KETHEREUM_VERSION}"
+    implementation "com.github.walleth.kethereum:crypto_impl_bouncycastle:${KETHEREUM_VERSION}"
+    implementation "com.github.walleth.kethereum:keystore:${KETHEREUM_VERSION}"
+
+    implementation "com.github.walleth:khex:0.6"
+}
+
+compileKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+compileTestKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
