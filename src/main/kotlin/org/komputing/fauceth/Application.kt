@@ -6,6 +6,7 @@ import io.ktor.application.*
 import io.ktor.html.respondHtml
 import io.ktor.http.content.*
 import io.ktor.request.receiveParameters
+import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.util.pipeline.*
 import kotlinx.html.*
@@ -40,11 +41,9 @@ fun main(args: Array<String>) = io.ktor.server.netty.EngineMain.main(args)
 
 fun Application.module() {
     lateinit var keyPair: ECKeyPair
-    lateinit var hcaptchaSiteKey: String
-    lateinit var hcaptchaSecret: String
 
-    hcaptchaSecret = config[Key("hcaptcha.secret", stringType)]
-    hcaptchaSiteKey = config[Key("hcaptcha.sitekey", stringType)]
+    val hcaptchaSecret = config[Key("hcaptcha.secret", stringType)]
+    val hcaptchaSiteKey = config[Key("hcaptcha.sitekey", stringType)]
 
     if (!keystoreFile.exists()) {
         keyPair = createEthereumKeyPair()
@@ -62,17 +61,17 @@ fun Application.module() {
         }
         get("/") {
             val address = call.request.queryParameters[ADDRESS_KEY]
-            render(address, null, hcaptchaSiteKey)
+            render(address, hcaptchaSiteKey)
         }
-        post("/") {
+        post("/request") {
             val receiveParameters = call.receiveParameters()
 
             val captchaResult: Boolean = verifyCaptcha(receiveParameters["h-captcha-response"] ?: "", hcaptchaSecret)
             val address = receiveParameters[ADDRESS_KEY]
             if (address?.length != 42) {
-                render(address, DialogDefinition("Error", "Address invalid", "error"), hcaptchaSiteKey)
+                call.respondText("""Swal.fire("Error", "Address invalid", "error");""")
             } else if (!captchaResult) {
-                render(address, DialogDefinition("Error", "Could not verify your humanity", "error"), hcaptchaSiteKey)
+                call.respondText("""Swal.fire("Error", "Could not verify your humanity", "error");""")
             } else {
 
                 val rpc = HttpEthereumRPC("https://rpc.kintsugi.themerge.dev")
@@ -93,24 +92,22 @@ fun Application.module() {
                 } else {
                     "send 1 ETH (transaction: $res)"
                 }
-                render(address, DialogDefinition("Transaction send", msg, "success"), hcaptchaSiteKey)
+                call.respondText("""Swal.fire("Transaction send", "$msg", "success");""")
             }
         }
-
-
     }
 
 }
 
-class DialogDefinition(val title: String, val msg: String, val type: String)
-
-private suspend fun PipelineContext<Unit, ApplicationCall>.render(prefillAddress: String?, dlg: DialogDefinition?, siteKey: String) {
+private suspend fun PipelineContext<Unit, ApplicationCall>.render(prefillAddress: String?, siteKey: String) {
 
     call.respondHtml {
         head {
             title { +"FaucETH" }
 
             script(src = "https://js.hcaptcha.com/1/api.js") {}
+
+            script(src = "/static/js/main.js") {}
 
             styleLink("/static/css/main.css")
             styleLink("/static/css/gh-fork-ribbon.css")
@@ -129,44 +126,39 @@ private suspend fun PipelineContext<Unit, ApplicationCall>.render(prefillAddress
         }
         body {
             div(classes = "container") {
-                form {
-                    a(href="https://github.com/komputing/FaucETH", classes="github-fork-ribbon fixed" ) {
-                        attributes["title"]="Fork me on GitHub"
-                        attributes["data-ribbon"]="Fork me on GitHub"
-                        +"Fork me on Fork me on GitHub"
-                    }
-                    h1(classes = "center") {
-                        +"FaucETH"
+                div {
+                    form {
+                        id = "mainForm"
+                        a(href = "https://github.com/komputing/FaucETH", classes = "github-fork-ribbon fixed") {
+                            attributes["title"] = "Fork me on GitHub"
+                            attributes["data-ribbon"] = "Fork me on GitHub"
+                            +"Fork me on Fork me on GitHub"
+                        }
+                        h1(classes = "center") {
+                            +"FaucETH"
+                        }
+                        br
+                        input(classes = "input") {
+                            name = ADDRESS_KEY
+                            value = prefillAddress ?: ""
+                            placeholder = "Please enter an address"
+                        }
+                        br
+                        br
+                        div(classes = "h-captcha center") {
+                            attributes["data-sitekey"] = siteKey
+                        }
                     }
                     br
-                    input(classes="center")  {
-                        size = "42"
-                        name = ADDRESS_KEY
-                        value = prefillAddress ?: ""
-                        placeholder = "Please enter an address"
-                    }
-                    br
-                    postButton(classes="right") {
-                        +"Request funds"
-                    }
-                    br
-                    br
-                    div(classes = "h-captcha center") {
-                        attributes["data-sitekey"] = siteKey
+                    div(classes = "center") {
+                        button(classes = "button") {
+                            onClick = "submitForm()"
+                            +"Request funds"
+                        }
                     }
                 }
             }
-            dlg?.let { alert(it) }
         }
     }
 }
 
-private fun BODY.alert(dlg: DialogDefinition) {
-    unsafe {
-        +"""
-         <script>
-         Swal.fire("${dlg.title}","${dlg.msg}","${dlg.type}")
-         </script
-         """.trimIndent()
-    }
-}
