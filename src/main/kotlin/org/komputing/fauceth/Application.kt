@@ -25,17 +25,12 @@ import java.math.BigInteger
 
 const val ADDRESS_KEY = "address"
 val keystoreFile = File("fauceth_keystore.json")
+val chainConfig = ChainConfig("kintsugi", BigInteger.valueOf(1337702), "https://explorer.kintsugi.themerge.dev/", "https://rpc.kintsugi.themerge.dev")
 
 val config = systemProperties() overriding
         EnvironmentVariables() overriding
         ConfigurationProperties.fromFile(File("fauceth.properties"))
 
-
-data class ChainConfig(
-    val name: String,
-    val chainId: BigInteger,
-    val explorer: String?
-)
 
 fun main(args: Array<String>) = io.ktor.server.netty.EngineMain.main(args)
 
@@ -53,7 +48,13 @@ fun Application.module() {
         keyPair = PrivateKey(keystoreFile.readText().toBigInteger()).toECKeyPair()
     }
 
-    val chainConfig = ChainConfig("kintsugi", BigInteger.valueOf(1337702), "https://explorer.kintsugi.themerge.dev/")
+    val rpc = HttpEthereumRPC(chainConfig.rpc)
+
+    val initialNonce = rpc.getTransactionCount(keyPair.toAddress())
+
+    val atomicNonce = AtomicNonce(initialNonce!!)
+
+
     routing {
         static("/static") {
             staticRootFolder
@@ -74,12 +75,10 @@ fun Application.module() {
                 call.respondText("""Swal.fire("Error", "Could not verify your humanity", "error");""")
             } else {
 
-                val rpc = HttpEthereumRPC("https://rpc.kintsugi.themerge.dev")
-                val nonce = rpc.getTransactionCount(keyPair.toAddress())
                 val tx = createEmptyTransaction().apply {
                     to = Address(address)
                     value = ETH_IN_WEI
-                    this.nonce = nonce
+                    nonce = atomicNonce.getAndIncrement()
                     gasLimit = DEFAULT_GAS_LIMIT
                     gasPrice = BigInteger.valueOf(1000000000)
                     chain = chainConfig.chainId
