@@ -16,6 +16,7 @@ import org.kethereum.crypto.createEthereumKeyPair
 import org.kethereum.crypto.toAddress
 import org.kethereum.crypto.toECKeyPair
 import org.kethereum.eip155.signViaEIP155
+import org.kethereum.erc55.isValid
 import org.kethereum.extensions.transactions.encodeLegacyTxRLP
 import org.kethereum.model.*
 import org.kethereum.rpc.HttpEthereumRPC
@@ -85,15 +86,15 @@ fun Application.module() {
             val receiveParameters = call.receiveParameters()
 
             val captchaResult: Boolean = verifyCaptcha(receiveParameters["h-captcha-response"] ?: "", hcaptchaSecret)
-            val address = receiveParameters[ADDRESS_KEY]
-            if (address?.length != 42) {
+            val address = Address(receiveParameters[ADDRESS_KEY]?:"")
+            if (!address.isValid()) {
                 call.respondText("""Swal.fire("Error", "Address invalid", "error");""")
             } else if (!captchaResult) {
                 call.respondText("""Swal.fire("Error", "Could not verify your humanity", "error");""")
             } else {
 
                 val tx = createEmptyTransaction().apply {
-                    to = Address(address)
+                    to = address
                     value = ETH_IN_WEI
                     nonce = atomicNonce.getAndIncrement()
                     gasLimit = DEFAULT_GAS_LIMIT

@@ -29,6 +29,7 @@ dependencies {
     implementation "com.github.walleth.kethereum:extensions_transactions:${KETHEREUM_VERSION}"
     implementation "com.github.walleth.kethereum:flows:${KETHEREUM_VERSION}"
     implementation "com.github.walleth.kethereum:rpc:${KETHEREUM_VERSION}"
+    implementation "com.github.walleth.kethereum:erc55:${KETHEREUM_VERSION}"
     implementation "com.github.walleth.kethereum:rpc_min3:${KETHEREUM_VERSION}"
     implementation "com.github.walleth.kethereum:model:${KETHEREUM_VERSION}"
     implementation "com.github.walleth.kethereum:crypto:${KETHEREUM_VERSION}"
