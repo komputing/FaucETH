@@ -29,9 +29,6 @@ val config = systemProperties() overriding
         EnvironmentVariables() overriding
         ConfigurationProperties.fromFile(File("fauceth.properties"))
 
-lateinit var keyPair: ECKeyPair
-lateinit var hcaptchaSiteKey: String
-lateinit var hcaptchaSecret: String
 
 data class ChainConfig(
     val name: String,
@@ -39,7 +36,13 @@ data class ChainConfig(
     val explorer: String?
 )
 
-fun main(args: Array<String>) {
+fun main(args: Array<String>) = io.ktor.server.netty.EngineMain.main(args)
+
+fun Application.module() {
+    lateinit var keyPair: ECKeyPair
+    lateinit var hcaptchaSiteKey: String
+    lateinit var hcaptchaSecret: String
+
     hcaptchaSecret = config[Key("hcaptcha.secret", stringType)]
     hcaptchaSiteKey = config[Key("hcaptcha.sitekey", stringType)]
 
@@ -51,10 +54,6 @@ fun main(args: Array<String>) {
         keyPair = PrivateKey(keystoreFile.readText().toBigInteger()).toECKeyPair()
     }
 
-    io.ktor.server.netty.EngineMain.main(args)
-}
-
-fun Application.module() {
     val chainConfig = ChainConfig("kintsugi", BigInteger.valueOf(1337702), "https://explorer.kintsugi.themerge.dev/")
     routing {
         static("/static") {
@@ -63,7 +62,7 @@ fun Application.module() {
         }
         get("/") {
             val address = call.request.queryParameters[ADDRESS_KEY]
-            render(address, null)
+            render(address, null, hcaptchaSiteKey)
         }
         post("/") {
             val receiveParameters = call.receiveParameters()
@@ -71,9 +70,9 @@ fun Application.module() {
             val captchaResult: Boolean = verifyCaptcha(receiveParameters["h-captcha-response"] ?: "", hcaptchaSecret)
             val address = receiveParameters[ADDRESS_KEY]
             if (address?.length != 42) {
-                render(address, DialogDefinition("Error", "Address invalid", "error"))
+                render(address, DialogDefinition("Error", "Address invalid", "error"), hcaptchaSiteKey)
             } else if (!captchaResult) {
-                render(address, DialogDefinition("Error", "Could not verify your humanity", "error"))
+                render(address, DialogDefinition("Error", "Could not verify your humanity", "error"), hcaptchaSiteKey)
             } else {
 
                 val rpc = HttpEthereumRPC("https://rpc.kintsugi.themerge.dev")
@@ -94,7 +93,7 @@ fun Application.module() {
                 } else {
                     "send 1 ETH (transaction: $res)"
                 }
-                render(address,  DialogDefinition("Transaction send", msg, "success"))
+                render(address, DialogDefinition("Transaction send", msg, "success"), hcaptchaSiteKey)
             }
         }
 
@@ -105,7 +104,7 @@ fun Application.module() {
 
 class DialogDefinition(val title: String, val msg: String, val type: String)
 
-private suspend fun PipelineContext<Unit, ApplicationCall>.render(prefillAddress: String?, dlg: DialogDefinition?) {
+private suspend fun PipelineContext<Unit, ApplicationCall>.render(prefillAddress: String?, dlg: DialogDefinition?, siteKey: String) {
 
     call.respondHtml {
         head {
@@ -113,34 +112,39 @@ private suspend fun PipelineContext<Unit, ApplicationCall>.render(prefillAddress
 
             script(src = "https://js.hcaptcha.com/1/api.js") {}
 
+            styleLink("/static/css/main.css")
+
             styleLink("/static/css/sweetalert2.min.css")
             script(src = "/static/js/sweetalert2.all.min.js") {}
 
-            link(rel="manifest", href="/static/site.webmanifest")
-            link(rel="apple-touch-icon", href="/static/favicon/apple-touch-icon.png")
-            link(rel="icon", href="/static/favicon/favicon-32x32.png") {
-                attributes["sizes"]="32x32"
+            link(rel = "manifest", href = "/static/site.webmanifest")
+            link(rel = "apple-touch-icon", href = "/static/favicon/apple-touch-icon.png")
+            link(rel = "icon", href = "/static/favicon/favicon-32x32.png") {
+                attributes["sizes"] = "32x32"
             }
-            link(rel="icon", href="/static/favicon/favicon-16x16.png") {
-                attributes["sizes"]="16x16"
+            link(rel = "icon", href = "/static/favicon/favicon-16x16.png") {
+                attributes["sizes"] = "16x16"
             }
         }
         body {
-            p {
-                +"FaucETH"
-            }
-            form {
-                input {
-                    name = ADDRESS_KEY
-                    value = prefillAddress ?: ""
-                    placeholder = "Please enter an address"
-                }
-                br
-                postButton {
-                    +"Request funds"
-                }
-                div(classes = "h-captcha") {
-                    attributes["data-sitekey"] = hcaptchaSiteKey
+            div(classes = "center") {
+                form() {
+                    h1(classes = "center") {
+                        +"FaucETH"
+                    }
+                    br
+                    input {
+                        name = ADDRESS_KEY
+                        value = prefillAddress ?: ""
+                        placeholder = "Please enter an address"
+                    }
+                    br
+                    postButton {
+                        +"Request funds"
+                    }
+                    div(classes = "h-captcha") {
+                        attributes["data-sitekey"] = siteKey
+                    }
                 }
             }
             dlg?.let { alert(it) }
