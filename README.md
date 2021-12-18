@@ -30,9 +30,14 @@ your working dir needs a file called `fauceth.properties` that looks like this:
 ```properties
 hcaptcha.secret=your_hcaptcha_secret
 hcaptcha.sitekey=your_hcaptcha_site_key
+
+chain.id=1337702
+chain.rpc=https://rpc.kintsugi.themerge.dev
 ```
 
-Make sure to replace the values with yours. You can also inject these properties via environment variables or systen properties.
+Make sure to replace the values with yours. You can also inject these properties via environment variables or system properties.
+
+Optional properties you can set are `app.title` or `chain.explorer`
 
 # Dream
 

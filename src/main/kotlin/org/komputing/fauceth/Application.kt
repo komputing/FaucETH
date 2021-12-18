@@ -26,7 +26,6 @@ import java.math.BigInteger
 
 const val ADDRESS_KEY = "address"
 val keystoreFile = File("fauceth_keystore.json")
-val chainConfig = ChainConfig("kintsugi", BigInteger.valueOf(1337702), "https://explorer.kintsugi.themerge.dev/", "https://rpc.kintsugi.themerge.dev")
 
 val config = systemProperties() overriding
         EnvironmentVariables() overriding
@@ -41,6 +40,12 @@ fun Application.module() {
     val hcaptchaSecret = config[Key("hcaptcha.secret", stringType)]
     val hcaptchaSiteKey = config[Key("hcaptcha.sitekey", stringType)]
 
+    val appTitle = config.getOrElse(Key("app.title", stringType), "FaucETH")
+
+    val chainRPCURL = config[Key("chain.rpc", stringType)]
+    val chainExplorer = config.getOrNull(Key("chain.explorer", stringType))
+    val chainId = BigInteger(config[Key("chain.id", stringType)])
+
     if (!keystoreFile.exists()) {
         keyPair = createEthereumKeyPair()
         keystoreFile.createNewFile()
@@ -49,7 +54,7 @@ fun Application.module() {
         keyPair = PrivateKey(keystoreFile.readText().toBigInteger()).toECKeyPair()
     }
 
-    val rpc = HttpEthereumRPC(chainConfig.rpc)
+    val rpc = HttpEthereumRPC(chainRPCURL)
 
     val initialNonce = rpc.getTransactionCount(keyPair.toAddress())
 
@@ -63,7 +68,66 @@ fun Application.module() {
         }
         get("/") {
             val address = call.request.queryParameters[ADDRESS_KEY]
-            render(address, hcaptchaSiteKey)
+
+            call.respondHtml {
+                head {
+                    title { +appTitle }
+
+                    script(src = "https://js.hcaptcha.com/1/api.js") {}
+
+                    script(src = "/static/js/main.js") {}
+
+                    styleLink("/static/css/main.css")
+                    styleLink("/static/css/gh-fork-ribbon.css")
+
+                    styleLink("/static/css/sweetalert2.min.css")
+                    script(src = "/static/js/sweetalert2.all.min.js") {}
+
+                    link(rel = "manifest", href = "/static/site.webmanifest")
+                    link(rel = "apple-touch-icon", href = "/static/favicon/apple-touch-icon.png")
+                    link(rel = "icon", href = "/static/favicon/favicon-32x32.png") {
+                        attributes["sizes"] = "32x32"
+                    }
+                    link(rel = "icon", href = "/static/favicon/favicon-16x16.png") {
+                        attributes["sizes"] = "16x16"
+                    }
+                }
+                body {
+                    div(classes = "container") {
+                        div {
+                            form {
+                                id = "mainForm"
+                                a(href = "https://github.com/komputing/FaucETH", classes = "github-fork-ribbon fixed") {
+                                    attributes["title"] = "Fork me on GitHub"
+                                    attributes["data-ribbon"] = "Fork me on GitHub"
+                                    +"Fork me on Fork me on GitHub"
+                                }
+                                h1(classes = "center") {
+                                    +appTitle
+                                }
+                                br
+                                input(classes = "input") {
+                                    name = ADDRESS_KEY
+                                    value = address ?: ""
+                                    placeholder = "Please enter an address"
+                                }
+                                br
+                                br
+                                div(classes = "h-captcha center") {
+                                    attributes["data-sitekey"] = hcaptchaSiteKey
+                                }
+                            }
+                            br
+                            div(classes = "center") {
+                                button(classes = "button") {
+                                    onClick = "submitForm()"
+                                    +"Request funds"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
         get("/admin") {
 
@@ -86,7 +150,7 @@ fun Application.module() {
             val receiveParameters = call.receiveParameters()
 
             val captchaResult: Boolean = verifyCaptcha(receiveParameters["h-captcha-response"] ?: "", hcaptchaSecret)
-            val address = Address(receiveParameters[ADDRESS_KEY]?:"")
+            val address = Address(receiveParameters[ADDRESS_KEY] ?: "")
             if (!address.isValid()) {
                 call.respondText("""Swal.fire("Error", "Address invalid", "error");""")
             } else if (!captchaResult) {
@@ -99,13 +163,13 @@ fun Application.module() {
                     nonce = atomicNonce.getAndIncrement()
                     gasLimit = DEFAULT_GAS_LIMIT
                     gasPrice = BigInteger.valueOf(1000000000)
-                    chain = chainConfig.chainId
+                    chain = chainId
                 }
 
                 val signature = tx.signViaEIP155(keyPair, ChainId(tx.chain!!))
                 val res = rpc.sendRawTransaction(tx.encodeLegacyTxRLP(signature).toHexString())
-                val msg = if (chainConfig.explorer != null) {
-                    "send 1 ETH (<a href='${chainConfig.explorer}/tx/$res'>view here</a>)"
+                val msg = if (chainExplorer != null) {
+                    "send 1 ETH (<a href='${chainExplorer}/tx/$res'>view here</a>)"
                 } else {
                     "send 1 ETH (transaction: $res)"
                 }
@@ -116,66 +180,4 @@ fun Application.module() {
 
 }
 
-private suspend fun PipelineContext<Unit, ApplicationCall>.render(prefillAddress: String?, siteKey: String) {
-
-    call.respondHtml {
-        head {
-            title { +"FaucETH" }
-
-            script(src = "https://js.hcaptcha.com/1/api.js") {}
-
-            script(src = "/static/js/main.js") {}
-
-            styleLink("/static/css/main.css")
-            styleLink("/static/css/gh-fork-ribbon.css")
-
-            styleLink("/static/css/sweetalert2.min.css")
-            script(src = "/static/js/sweetalert2.all.min.js") {}
-
-            link(rel = "manifest", href = "/static/site.webmanifest")
-            link(rel = "apple-touch-icon", href = "/static/favicon/apple-touch-icon.png")
-            link(rel = "icon", href = "/static/favicon/favicon-32x32.png") {
-                attributes["sizes"] = "32x32"
-            }
-            link(rel = "icon", href = "/static/favicon/favicon-16x16.png") {
-                attributes["sizes"] = "16x16"
-            }
-        }
-        body {
-            div(classes = "container") {
-                div {
-                    form {
-                        id = "mainForm"
-                        a(href = "https://github.com/komputing/FaucETH", classes = "github-fork-ribbon fixed") {
-                            attributes["title"] = "Fork me on GitHub"
-                            attributes["data-ribbon"] = "Fork me on GitHub"
-                            +"Fork me on Fork me on GitHub"
-                        }
-                        h1(classes = "center") {
-                            +"FaucETH"
-                        }
-                        br
-                        input(classes = "input") {
-                            name = ADDRESS_KEY
-                            value = prefillAddress ?: ""
-                            placeholder = "Please enter an address"
-                        }
-                        br
-                        br
-                        div(classes = "h-captcha center") {
-                            attributes["data-sitekey"] = siteKey
-                        }
-                    }
-                    br
-                    div(classes = "center") {
-                        button(classes = "button") {
-                            onClick = "submitForm()"
-                            +"Request funds"
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
