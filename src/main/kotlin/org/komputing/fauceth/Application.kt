@@ -58,6 +58,7 @@ fun Application.module() {
     val chainConfig = ChainConfig("kintsugi", BigInteger.valueOf(1337702), "https://explorer.kintsugi.themerge.dev/")
     routing {
         static("/static") {
+            staticRootFolder
             resources("files")
         }
         get("/") {
@@ -114,6 +115,15 @@ private suspend fun PipelineContext<Unit, ApplicationCall>.render(prefillAddress
 
             styleLink("/static/css/sweetalert2.min.css")
             script(src = "/static/js/sweetalert2.all.min.js") {}
+
+            link(rel="manifest", href="/static/site.webmanifest")
+            link(rel="apple-touch-icon", href="/static/favicon/apple-touch-icon.png")
+            link(rel="icon", href="/static/favicon/favicon-32x32.png") {
+                attributes["sizes"]="32x32"
+            }
+            link(rel="icon", href="/static/favicon/favicon-16x16.png") {
+                attributes["sizes"]="16x16"
+            }
         }
         body {
             p {
