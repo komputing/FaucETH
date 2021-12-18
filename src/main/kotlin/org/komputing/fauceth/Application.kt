@@ -113,6 +113,7 @@ private suspend fun PipelineContext<Unit, ApplicationCall>.render(prefillAddress
             script(src = "https://js.hcaptcha.com/1/api.js") {}
 
             styleLink("/static/css/main.css")
+            styleLink("/static/css/gh-fork-ribbon.css")
 
             styleLink("/static/css/sweetalert2.min.css")
             script(src = "/static/js/sweetalert2.all.min.js") {}
@@ -127,22 +128,30 @@ private suspend fun PipelineContext<Unit, ApplicationCall>.render(prefillAddress
             }
         }
         body {
-            div(classes = "center") {
-                form() {
+            div(classes = "container") {
+                form {
+                    a(href="https://github.com/komputing/FaucETH", classes="github-fork-ribbon fixed" ) {
+                        attributes["title"]="Fork me on GitHub"
+                        attributes["data-ribbon"]="Fork me on GitHub"
+                        +"Fork me on Fork me on GitHub"
+                    }
                     h1(classes = "center") {
                         +"FaucETH"
                     }
                     br
-                    input {
+                    input(classes="center")  {
+                        size = "42"
                         name = ADDRESS_KEY
                         value = prefillAddress ?: ""
                         placeholder = "Please enter an address"
                     }
                     br
-                    postButton {
+                    postButton(classes="right") {
                         +"Request funds"
                     }
-                    div(classes = "h-captcha") {
+                    br
+                    br
+                    div(classes = "h-captcha center") {
                         attributes["data-sitekey"] = siteKey
                     }
                 }
