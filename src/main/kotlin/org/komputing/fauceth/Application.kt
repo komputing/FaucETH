@@ -1,5 +1,7 @@
 package org.komputing.fauceth
 
+import com.natpryce.konfig.*
+import com.natpryce.konfig.ConfigurationProperties.Companion.systemProperties
 import io.ktor.application.*
 import io.ktor.html.respondHtml
 import io.ktor.http.content.*
@@ -13,20 +15,28 @@ import org.kethereum.crypto.createEthereumKeyPair
 import org.kethereum.crypto.toAddress
 import org.kethereum.crypto.toECKeyPair
 import org.kethereum.eip155.signViaEIP155
-import org.kethereum.extensions.transactions.encode
 import org.kethereum.extensions.transactions.encodeLegacyTxRLP
 import org.kethereum.model.*
 import org.kethereum.rpc.HttpEthereumRPC
 import org.walleth.khex.toHexString
 import java.io.File
 import java.math.BigInteger
-import java.math.BigInteger.ZERO
 
 const val ADDRESS_KEY = "address"
 val keystoreFile = File("fauceth_keystore.json")
+
+val config = systemProperties() overriding
+        EnvironmentVariables() overriding
+        ConfigurationProperties.fromFile(File("fauceth.properties"))
+
 lateinit var keyPair: ECKeyPair
+lateinit var hcaptchaSiteKey: String
+lateinit var hcaptchaSecret: String
 
 fun main(args: Array<String>) {
+    hcaptchaSecret = config[Key("hcaptcha.secret", stringType)]
+    hcaptchaSiteKey = config[Key("hcaptcha.sitekey", stringType)]
+
     if (!keystoreFile.exists()) {
         keyPair = createEthereumKeyPair()
         keystoreFile.createNewFile()
@@ -35,7 +45,6 @@ fun main(args: Array<String>) {
         keyPair = PrivateKey(keystoreFile.readText().toBigInteger()).toECKeyPair()
     }
 
-    System.out.println("address" + keyPair.toAddress())
     io.ktor.server.netty.EngineMain.main(args)
 }
 
@@ -49,14 +58,41 @@ fun Application.module() {
             render(address, null)
         }
         post("/") {
-            val address = call.receiveParameters()[ADDRESS_KEY]
-            render(null, address)
+            val receiveParameters = call.receiveParameters()
+
+            val captchaResult: Boolean = verifyCaptcha(receiveParameters["h-captcha-response"] ?: "", hcaptchaSecret)
+            val address = receiveParameters[ADDRESS_KEY]
+            if (address?.length != 42) {
+                render(address, DialogDefinition("Error", "Address invalid", "error"))
+            } else if (!captchaResult) {
+                render(address, DialogDefinition("Error", "Could not verify your humanity", "error"))
+            } else {
+
+                val rpc = HttpEthereumRPC("https://rpc.kintsugi.themerge.dev")
+                val nonce = rpc.getTransactionCount(keyPair.toAddress())
+                val tx = createEmptyTransaction().apply {
+                    to = Address(address)
+                    value = ETH_IN_WEI
+                    this.nonce = nonce
+                    gasLimit = DEFAULT_GAS_LIMIT
+                    gasPrice = BigInteger.valueOf(1000000000)
+                    chain = BigInteger.valueOf(1337702)
+                }
+
+                val signature = tx.signViaEIP155(keyPair, ChainId(tx.chain!!))
+                val res = rpc.sendRawTransaction(tx.encodeLegacyTxRLP(signature).toHexString())
+                render(address, DialogDefinition("Transaction send", "send 1 ETH $res", "success"))
+            }
         }
 
+
     }
+
 }
 
-private suspend fun PipelineContext<Unit, ApplicationCall>.render(prefillAddress: String?, postAddress: String?) {
+class DialogDefinition(val title: String, val msg: String, val type: String)
+
+private suspend fun PipelineContext<Unit, ApplicationCall>.render(prefillAddress: String?, dlg: DialogDefinition?) {
 
     call.respondHtml {
         head {
@@ -74,7 +110,7 @@ private suspend fun PipelineContext<Unit, ApplicationCall>.render(prefillAddress
             form {
                 input {
                     name = ADDRESS_KEY
-                    value = prefillAddress ?: postAddress ?: ""
+                    value = prefillAddress ?: ""
                     placeholder = "Please enter an address"
                 }
                 br
@@ -82,40 +118,19 @@ private suspend fun PipelineContext<Unit, ApplicationCall>.render(prefillAddress
                     +"Request funds"
                 }
                 div(classes = "h-captcha") {
-                    attributes["data-sitekey"] = "1559a32b-7448-49f3-bdd5-cbb8aabb0a4b"
+                    attributes["data-sitekey"] = hcaptchaSiteKey
                 }
             }
-
-            if (postAddress != null) {
-                if (postAddress.length != 42) {
-                    alert("Invalid address", "$postAddress is not a valid address", "error")
-                } else {
-
-                    val rpc = HttpEthereumRPC("https://rpc.kintsugi.themerge.dev")
-                    val nonce = rpc.getTransactionCount(keyPair.toAddress())
-                    val tx = createEmptyTransaction().apply {
-                        to = Address(postAddress)
-                        value = ETH_IN_WEI
-                        this.nonce = nonce
-                        gasLimit = DEFAULT_GAS_LIMIT
-                        gasPrice = BigInteger.valueOf(1000000000)
-                        chain = BigInteger.valueOf(1337702)
-                    }
-
-                    val signature=tx.signViaEIP155(keyPair, ChainId(tx.chain!!))
-                    val res = rpc.sendRawTransaction(tx.encodeLegacyTxRLP(signature).toHexString())
-                    alert("Success", "send 1 ETH $res", "success")
-                }
-            }
+            dlg?.let { alert(it) }
         }
     }
 }
 
-private fun BODY.alert(title: String, message: String, type: String) {
+private fun BODY.alert(dlg: DialogDefinition) {
     unsafe {
         +"""
          <script>
-         Swal.fire("$title","$message","$type")
+         Swal.fire("${dlg.title}","${dlg.msg}","${dlg.type}")
          </script
          """.trimIndent()
     }

@@ -35,6 +35,7 @@ dependencies {
     implementation "com.github.walleth.kethereum:crypto_impl_bouncycastle:${KETHEREUM_VERSION}"
     implementation "com.github.walleth.kethereum:keystore:${KETHEREUM_VERSION}"
 
+    implementation "com.natpryce:konfig:1.6.10.0"
     implementation "com.github.walleth:khex:0.6"
 }
 
