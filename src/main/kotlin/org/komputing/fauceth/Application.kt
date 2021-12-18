@@ -64,6 +64,23 @@ fun Application.module() {
             val address = call.request.queryParameters[ADDRESS_KEY]
             render(address, hcaptchaSiteKey)
         }
+        get("/admin") {
+
+            call.respondHtml {
+                body {
+                    b {
+                        +"Address: "
+                    }
+                    +keyPair.toAddress().toString()
+                    br
+                    b {
+                        +"Nonce: "
+                    }
+                    +atomicNonce.get().toString()
+                }
+
+            }
+        }
         post("/request") {
             val receiveParameters = call.receiveParameters()
 

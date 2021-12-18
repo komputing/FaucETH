@@ -11,4 +11,5 @@ class AtomicNonce(initial: BigInteger) {
     }
 
     fun getAndIncrement(): BigInteger =current.getAndAccumulate(BigInteger.ONE) { previous, x -> previous.add(x) }
+    fun get() : BigInteger = current.get()
 }
