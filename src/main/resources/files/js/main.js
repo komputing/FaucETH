@@ -5,6 +5,13 @@ async function submitForm() {
       // Workaround, hCaptcha adds two keys with same value
       formData.delete('g-recaptcha-response');
 
+      Swal.fire({
+        title: "Please wait",
+        imageUrl: "/static/images/progress.gif",
+        showConfirmButton: false,
+        allowOutsideClick: false
+      });
+
       hcaptcha.reset()
 
       const response = await fetch('/request', {
@@ -13,6 +20,9 @@ async function submitForm() {
        });
 
        const code = await response.text();
+
+       Swal.close();
+
        eval(code);
 
 }
