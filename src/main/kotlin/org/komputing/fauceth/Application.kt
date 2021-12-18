@@ -33,6 +33,12 @@ lateinit var keyPair: ECKeyPair
 lateinit var hcaptchaSiteKey: String
 lateinit var hcaptchaSecret: String
 
+data class ChainConfig(
+    val name: String,
+    val chainId: BigInteger,
+    val explorer: String?
+)
+
 fun main(args: Array<String>) {
     hcaptchaSecret = config[Key("hcaptcha.secret", stringType)]
     hcaptchaSiteKey = config[Key("hcaptcha.sitekey", stringType)]
@@ -49,6 +55,7 @@ fun main(args: Array<String>) {
 }
 
 fun Application.module() {
+    val chainConfig = ChainConfig("kintsugi", BigInteger.valueOf(1337702), "https://explorer.kintsugi.themerge.dev/")
     routing {
         static("/static") {
             resources("files")
@@ -76,12 +83,17 @@ fun Application.module() {
                     this.nonce = nonce
                     gasLimit = DEFAULT_GAS_LIMIT
                     gasPrice = BigInteger.valueOf(1000000000)
-                    chain = BigInteger.valueOf(1337702)
+                    chain = chainConfig.chainId
                 }
 
                 val signature = tx.signViaEIP155(keyPair, ChainId(tx.chain!!))
                 val res = rpc.sendRawTransaction(tx.encodeLegacyTxRLP(signature).toHexString())
-                render(address, DialogDefinition("Transaction send", "send 1 ETH $res", "success"))
+                val msg = if (chainConfig.explorer != null) {
+                    "send 1 ETH (<a href='${chainConfig.explorer}/tx/$res'>view here</a>)"
+                } else {
+                    "send 1 ETH (transaction: $res)"
+                }
+                render(address,  DialogDefinition("Transaction send", msg, "success"))
             }
         }
 
