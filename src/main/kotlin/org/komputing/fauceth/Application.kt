@@ -1,6 +1,8 @@
 package org.komputing.fauceth
 
 import com.github.michaelbull.retry.policy.decorrelatedJitterBackoff
+import com.github.michaelbull.retry.policy.limitAttempts
+import com.github.michaelbull.retry.policy.plus
 import com.github.michaelbull.retry.retry
 import com.natpryce.konfig.*
 import com.natpryce.konfig.ConfigurationProperties.Companion.systemProperties
@@ -16,12 +18,16 @@ import org.kethereum.ETH_IN_WEI
 import org.kethereum.crypto.createEthereumKeyPair
 import org.kethereum.crypto.toAddress
 import org.kethereum.crypto.toECKeyPair
+import org.kethereum.eip137.model.ENSName
 import org.kethereum.eip1559.signer.signViaEIP1559
 import org.kethereum.eip1559_fee_oracle.suggestEIP1559Fees
+import org.kethereum.ens.ENS
+import org.kethereum.ens.isPotentialENSDomain
 import org.kethereum.erc55.isValid
 import org.kethereum.extensions.transactions.encode
 import org.kethereum.model.*
 import org.kethereum.rpc.HttpEthereumRPC
+import org.kethereum.rpc.min3.getMin3RPC
 import org.walleth.khex.toHexString
 import java.io.File
 import java.lang.IllegalStateException
@@ -29,6 +35,7 @@ import java.math.BigInteger
 
 const val ADDRESS_KEY = "address"
 val keystoreFile = File("fauceth_keystore.json")
+val ens = ENS(getMin3RPC())
 
 val config = systemProperties() overriding
         EnvironmentVariables() overriding
@@ -118,7 +125,7 @@ fun Application.module() {
                                 input(classes = "input") {
                                     name = ADDRESS_KEY
                                     value = address ?: ""
-                                    placeholder = "Please enter an address"
+                                    placeholder = "Please enter some address or ENS name"
                                 }
                                 div(classes = "h-captcha center") {
                                     attributes["data-sitekey"] = hcaptchaSiteKey
@@ -156,8 +163,20 @@ fun Application.module() {
             val receiveParameters = call.receiveParameters()
 
             val captchaResult: Boolean = verifyCaptcha(receiveParameters["h-captcha-response"] ?: "", hcaptchaSecret)
-            val address = Address(receiveParameters[ADDRESS_KEY] ?: "")
-            if (!address.isValid()) {
+            var address = Address(receiveParameters[ADDRESS_KEY] ?: "")
+            val ensName = receiveParameters[ADDRESS_KEY]?.let { name -> ENSName(name) }
+            if (ensName?.isPotentialENSDomain() == true) {
+                try {
+                    address = retry(limitAttempts(3) + decorrelatedJitterBackoff(base = 3L, max = 5000L)) {
+                        ens.getAddress(ensName) ?: throw IllegalArgumentException("ENS name not found")
+                    }
+                } catch (e: Exception) {
+                }
+            }
+
+            if (!address.isValid() && ensName?.isPotentialENSDomain() == true) {
+                call.respondText("""Swal.fire("Error", "Could not resolve ENS name", "error");""")
+            } else if (!address.isValid()) {
                 call.respondText("""Swal.fire("Error", "Address invalid", "error");""")
             } else if (!captchaResult) {
                 call.respondText("""Swal.fire("Error", "Could not verify your humanity", "error");""")
