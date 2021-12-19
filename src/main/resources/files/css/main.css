@@ -12,6 +12,10 @@
 .image {
  margin: 8px;
 }
+
+@media screen and (max-height:700px)
+{.image{display:none}}
+
 .input {
   width: 380px;
   margin: 8px;
