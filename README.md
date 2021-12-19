@@ -37,7 +37,7 @@ chain.rpc=https://rpc.kintsugi.themerge.dev
 
 Make sure to replace the values with yours. You can also inject these properties via environment variables or system properties.
 
-Optional properties you can set are `app.title` or `chain.explorer`
+Optional properties you can set are `app.title`, `app.imageURL`, `app.amount` or `chain.explorer`
 
 # Dream
 
