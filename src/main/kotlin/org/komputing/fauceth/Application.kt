@@ -1,5 +1,7 @@
 package org.komputing.fauceth
 
+import com.github.michaelbull.retry.policy.decorrelatedJitterBackoff
+import com.github.michaelbull.retry.retry
 import com.natpryce.konfig.*
 import com.natpryce.konfig.ConfigurationProperties.Companion.systemProperties
 import io.ktor.application.*
@@ -8,20 +10,21 @@ import io.ktor.http.content.*
 import io.ktor.request.receiveParameters
 import io.ktor.response.*
 import io.ktor.routing.*
-import io.ktor.util.pipeline.*
 import kotlinx.html.*
 import org.kethereum.DEFAULT_GAS_LIMIT
 import org.kethereum.ETH_IN_WEI
 import org.kethereum.crypto.createEthereumKeyPair
 import org.kethereum.crypto.toAddress
 import org.kethereum.crypto.toECKeyPair
-import org.kethereum.eip155.signViaEIP155
+import org.kethereum.eip1559.signer.signViaEIP1559
+import org.kethereum.eip1559_fee_oracle.suggestEIP1559Fees
 import org.kethereum.erc55.isValid
-import org.kethereum.extensions.transactions.encodeLegacyTxRLP
+import org.kethereum.extensions.transactions.encode
 import org.kethereum.model.*
 import org.kethereum.rpc.HttpEthereumRPC
 import org.walleth.khex.toHexString
 import java.io.File
+import java.lang.IllegalStateException
 import java.math.BigInteger
 
 const val ADDRESS_KEY = "address"
@@ -165,16 +168,32 @@ fun Application.module() {
                     value = ETH_IN_WEI
                     nonce = atomicNonce.getAndIncrement()
                     gasLimit = DEFAULT_GAS_LIMIT
-                    gasPrice = BigInteger.valueOf(1000000000)
                     chain = chainId
                 }
 
-                val signature = tx.signViaEIP155(keyPair, ChainId(tx.chain!!))
-                val res = rpc.sendRawTransaction(tx.encodeLegacyTxRLP(signature).toHexString())
+                val feeSuggestionResult = retry(decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
+                    val feeSuggestionResults = suggestEIP1559Fees(rpc)
+
+                    (feeSuggestionResults.keys.minOrNull() ?: throw IllegalArgumentException("Could not get 1559 fees")).let {
+                        feeSuggestionResults[it]
+                    }
+                }
+
+                tx.maxPriorityFeePerGas = feeSuggestionResult!!.maxPriorityFeePerGas
+                tx.maxFeePerGas = feeSuggestionResult.maxFeePerGas
+
+                val signature = tx.signViaEIP1559(keyPair)
+
+                val txHash: String = retry(decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
+                    val res = rpc.sendRawTransaction(tx.encode(signature).toHexString())
+                    if (res?.startsWith("0x") != true) throw IllegalStateException("Got no hash from RPC for tx")
+                    res
+                }
+
                 val msg = if (chainExplorer != null) {
-                    "send 1 ETH (<a href='${chainExplorer}/tx/$res'>view here</a>)"
+                    "send 1 ETH (<a href='${chainExplorer}/tx/$txHash'>view here</a>)"
                 } else {
-                    "send 1 ETH (transaction: $res)"
+                    "send 1 ETH (transaction: $txHash)"
                 }
                 call.respondText("""Swal.fire("Transaction send", "$msg", "success");""")
             }
