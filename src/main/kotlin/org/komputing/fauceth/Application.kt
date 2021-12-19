@@ -32,7 +32,7 @@ val keystoreFile = File("fauceth_keystore.json")
 
 val config = systemProperties() overriding
         EnvironmentVariables() overriding
-        ConfigurationProperties.fromFile(File("fauceth.properties"))
+        ConfigurationProperties.fromOptionalFile(File("fauceth.properties"))
 
 
 fun main(args: Array<String>) = io.ktor.server.netty.EngineMain.main(args)
