@@ -41,6 +41,7 @@ fun Application.module() {
     val hcaptchaSiteKey = config[Key("hcaptcha.sitekey", stringType)]
 
     val appTitle = config.getOrElse(Key("app.title", stringType), "FaucETH")
+    val appHeroImage = config.getOrNull(Key("app.imageURL", stringType))
 
     val chainRPCURL = config[Key("chain.rpc", stringType)]
     val chainExplorer = config.getOrNull(Key("chain.explorer", stringType))
@@ -93,31 +94,33 @@ fun Application.module() {
                     }
                 }
                 body {
+                    a(href = "https://github.com/komputing/FaucETH", classes = "github-fork-ribbon fixed") {
+                        attributes["title"] = "Fork me on GitHub"
+                        attributes["data-ribbon"] = "Fork me on GitHub"
+                        +"Fork me on Fork me on GitHub"
+                    }
                     div(classes = "container") {
                         div {
                             form {
                                 id = "mainForm"
-                                a(href = "https://github.com/komputing/FaucETH", classes = "github-fork-ribbon fixed") {
-                                    attributes["title"] = "Fork me on GitHub"
-                                    attributes["data-ribbon"] = "Fork me on GitHub"
-                                    +"Fork me on Fork me on GitHub"
-                                }
+
                                 h1(classes = "center") {
                                     +appTitle
                                 }
-                                br
+                                appHeroImage?.let { url ->
+                                    div(classes = "center") {
+                                        img(src = url, classes = "image")
+                                    }
+                                }
                                 input(classes = "input") {
                                     name = ADDRESS_KEY
                                     value = address ?: ""
                                     placeholder = "Please enter an address"
                                 }
-                                br
-                                br
                                 div(classes = "h-captcha center") {
                                     attributes["data-sitekey"] = hcaptchaSiteKey
                                 }
                             }
-                            br
                             div(classes = "center") {
                                 button(classes = "button") {
                                     onClick = "submitForm()"
