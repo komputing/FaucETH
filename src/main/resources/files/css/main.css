@@ -19,6 +19,8 @@
 .input {
   width: 380px;
   margin: 8px;
+  padding: 8px;
+  box-sizing: border-box;
 }
 
 .button {
