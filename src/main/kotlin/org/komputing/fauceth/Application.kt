@@ -31,6 +31,7 @@ import org.kethereum.rpc.min3.getMin3RPC
 import org.walleth.khex.toHexString
 import java.io.File
 import java.lang.IllegalStateException
+import java.math.BigDecimal
 import java.math.BigInteger
 
 const val ADDRESS_KEY = "address"
@@ -52,6 +53,7 @@ fun Application.module() {
 
     val appTitle = config.getOrElse(Key("app.title", stringType), "FaucETH")
     val appHeroImage = config.getOrNull(Key("app.imageURL", stringType))
+    val amount = BigInteger(config.getOrNull(Key("app.amount", stringType))?: "$ETH_IN_WEI")
 
     val chainRPCURL = config[Key("chain.rpc", stringType)]
     val chainExplorer = config.getOrNull(Key("chain.explorer", stringType))
@@ -184,7 +186,7 @@ fun Application.module() {
 
                 val tx = createEmptyTransaction().apply {
                     to = address
-                    value = ETH_IN_WEI
+                    value = amount
                     nonce = atomicNonce.getAndIncrement()
                     gasLimit = DEFAULT_GAS_LIMIT
                     chain = chainId
@@ -209,10 +211,11 @@ fun Application.module() {
                     res
                 }
 
+                val foo= BigDecimal(amount).divide(BigDecimal(ETH_IN_WEI))
                 val msg = if (chainExplorer != null) {
-                    "send 1 ETH (<a href='${chainExplorer}/tx/$txHash'>view here</a>)"
+                    "send $foo ETH (<a href='${chainExplorer}/tx/$txHash'>view here</a>)"
                 } else {
-                    "send 1 ETH (transaction: $txHash)"
+                    "send $foo ETH (transaction: $txHash)"
                 }
                 call.respondText("""Swal.fire("Transaction send", "$msg", "success");""")
             }
