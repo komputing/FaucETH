@@ -38,45 +38,17 @@ const val ADDRESS_KEY = "address"
 val keystoreFile = File("fauceth_keystore.json")
 val ens = ENS(getMin3RPC())
 
-val config = systemProperties() overriding
-        EnvironmentVariables() overriding
-        ConfigurationProperties.fromOptionalFile(File("fauceth.properties"))
-
-
 fun main(args: Array<String>) = io.ktor.server.netty.EngineMain.main(args)
 
 fun Application.module() {
-    var keyPair: ECKeyPair? = config.getOrNull(Key("app.ethkey", stringType))?.let {
-        PrivateKey(it.toBigInteger(16)).toECKeyPair()
-    }
 
-    val hcaptchaSecret = config[Key("hcaptcha.secret", stringType)]
-    val hcaptchaSiteKey = config[Key("hcaptcha.sitekey", stringType)]
+    val config = FaucethConfig()
 
-    val appTitle = config.getOrElse(Key("app.title", stringType), "FaucETH")
-    val appHeroImage = config.getOrNull(Key("app.imageURL", stringType))
-    val amount = BigInteger(config.getOrNull(Key("app.amount", stringType)) ?: "$ETH_IN_WEI")
+    val rpc = HttpEthereumRPC(config.chainRPCURL)
 
-    val chainRPCURL = config[Key("chain.rpc", stringType)]
-    val chainExplorer = config.getOrNull(Key("chain.explorer", stringType))
-    val chainId = BigInteger(config[Key("chain.id", stringType)])
-
-    if (keyPair == null) {
-        if (!keystoreFile.exists()) {
-            keyPair = createEthereumKeyPair()
-            keystoreFile.createNewFile()
-            keystoreFile.writeText(keyPair.privateKey.key.toString())
-        } else {
-            keyPair = PrivateKey(keystoreFile.readText().toBigInteger()).toECKeyPair()
-        }
-    }
-
-    val rpc = HttpEthereumRPC(chainRPCURL)
-
-    val initialNonce = rpc.getTransactionCount(keyPair.toAddress())
+    val initialNonce = rpc.getTransactionCount(config.keyPair.toAddress())
 
     val atomicNonce = AtomicNonce(initialNonce!!)
-
 
     routing {
         static("/static") {
@@ -88,7 +60,7 @@ fun Application.module() {
 
             call.respondHtml {
                 head {
-                    title { +appTitle }
+                    title { +config.appTitle }
 
                     script(src = "https://js.hcaptcha.com/1/api.js") {}
 
@@ -121,9 +93,9 @@ fun Application.module() {
                                 id = "mainForm"
 
                                 h1(classes = "center") {
-                                    +appTitle
+                                    +config.appTitle
                                 }
-                                appHeroImage?.let { url ->
+                                config.appHeroImage?.let { url ->
                                     div(classes = "center") {
                                         img(src = url, classes = "image")
                                     }
@@ -134,7 +106,7 @@ fun Application.module() {
                                     placeholder = "Please enter some address or ENS name"
                                 }
                                 div(classes = "h-captcha center") {
-                                    attributes["data-sitekey"] = hcaptchaSiteKey
+                                    attributes["data-sitekey"] = config.hcaptchaSiteKey
                                 }
                             }
                             div(classes = "center") {
@@ -155,7 +127,7 @@ fun Application.module() {
                     b {
                         +"Address: "
                     }
-                    +keyPair.toAddress().toString()
+                    +config.keyPair.toAddress().toString()
                     br
                     b {
                         +"Nonce: "
@@ -168,7 +140,7 @@ fun Application.module() {
         post("/request") {
             val receiveParameters = call.receiveParameters()
 
-            val captchaResult: Boolean = verifyCaptcha(receiveParameters["h-captcha-response"] ?: "", hcaptchaSecret)
+            val captchaResult: Boolean = verifyCaptcha(receiveParameters["h-captcha-response"] ?: "", config.hcaptchaSecret)
             var address = Address(receiveParameters[ADDRESS_KEY] ?: "")
             val ensName = receiveParameters[ADDRESS_KEY]?.let { name -> ENSName(name) }
             if (ensName?.isPotentialENSDomain() == true) {
@@ -190,10 +162,10 @@ fun Application.module() {
 
                 val tx = createEmptyTransaction().apply {
                     to = address
-                    value = amount
+                    value = config.amount
                     nonce = atomicNonce.getAndIncrement()
                     gasLimit = DEFAULT_GAS_LIMIT
-                    chain = chainId
+                    chain = config.chainId
                 }
 
                 val feeSuggestionResult = retry(decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
@@ -207,7 +179,7 @@ fun Application.module() {
                 tx.maxPriorityFeePerGas = feeSuggestionResult!!.maxPriorityFeePerGas
                 tx.maxFeePerGas = feeSuggestionResult.maxFeePerGas
 
-                val signature = tx.signViaEIP1559(keyPair)
+                val signature = tx.signViaEIP1559(config.keyPair)
 
                 val txHash: String = retry(decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
                     val res = rpc.sendRawTransaction(tx.encode(signature).toHexString())
@@ -215,9 +187,9 @@ fun Application.module() {
                     res
                 }
 
-                val amountString = BigDecimal(amount).divide(BigDecimal(ETH_IN_WEI))
-                val msg = if (chainExplorer != null) {
-                    "send $amountString ETH (<a href='${chainExplorer}/tx/$txHash'>view here</a>)"
+                val amountString = BigDecimal(config.amount).divide(BigDecimal(ETH_IN_WEI))
+                val msg = if (config.chainExplorer != null) {
+                    "send $amountString ETH (<a href='${config.chainExplorer}/tx/$txHash'>view here</a>)"
                 } else {
                     "send $amountString ETH (transaction: $txHash)"
                 }
