@@ -215,11 +215,11 @@ fun Application.module() {
                     res
                 }
 
-                val foo= BigDecimal(amount).divide(BigDecimal(ETH_IN_WEI))
+                val amountString = BigDecimal(amount).divide(BigDecimal(ETH_IN_WEI))
                 val msg = if (chainExplorer != null) {
-                    "send $foo ETH (<a href='${chainExplorer}/tx/$txHash'>view here</a>)"
+                    "send $amountString ETH (<a href='${chainExplorer}/tx/$txHash'>view here</a>)"
                 } else {
-                    "send $foo ETH (transaction: $txHash)"
+                    "send $amountString ETH (transaction: $txHash)"
                 }
                 call.respondText("""Swal.fire("Transaction send", "$msg", "success");""")
             }
