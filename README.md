@@ -37,7 +37,7 @@ chain.rpc=https://rpc.kintsugi.themerge.dev
 
 Make sure to replace the values with yours. You can also inject these properties via environment variables or system properties.
 
-Optional properties you can set are `app.title`, `app.imageURL`, `app.amount` or `chain.explorer`
+Optional properties you can set are `app.title`, `app.imageURL`, `app.amount`, `app.ethkey` or `chain.explorer`
 
 You can change the port by setting the environment variable `PORT` or passing it as an command line argument like this:
 `./bin/fauceth -port=420`

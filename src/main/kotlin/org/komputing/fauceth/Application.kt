@@ -46,25 +46,29 @@ val config = systemProperties() overriding
 fun main(args: Array<String>) = io.ktor.server.netty.EngineMain.main(args)
 
 fun Application.module() {
-    lateinit var keyPair: ECKeyPair
+    var keyPair: ECKeyPair? = config.getOrNull(Key("app.ethkey", stringType))?.let {
+        PrivateKey(it.toBigInteger(16)).toECKeyPair()
+    }
 
     val hcaptchaSecret = config[Key("hcaptcha.secret", stringType)]
     val hcaptchaSiteKey = config[Key("hcaptcha.sitekey", stringType)]
 
     val appTitle = config.getOrElse(Key("app.title", stringType), "FaucETH")
     val appHeroImage = config.getOrNull(Key("app.imageURL", stringType))
-    val amount = BigInteger(config.getOrNull(Key("app.amount", stringType))?: "$ETH_IN_WEI")
+    val amount = BigInteger(config.getOrNull(Key("app.amount", stringType)) ?: "$ETH_IN_WEI")
 
     val chainRPCURL = config[Key("chain.rpc", stringType)]
     val chainExplorer = config.getOrNull(Key("chain.explorer", stringType))
     val chainId = BigInteger(config[Key("chain.id", stringType)])
 
-    if (!keystoreFile.exists()) {
-        keyPair = createEthereumKeyPair()
-        keystoreFile.createNewFile()
-        keystoreFile.writeText(keyPair.privateKey.key.toString())
-    } else {
-        keyPair = PrivateKey(keystoreFile.readText().toBigInteger()).toECKeyPair()
+    if (keyPair == null) {
+        if (!keystoreFile.exists()) {
+            keyPair = createEthereumKeyPair()
+            keystoreFile.createNewFile()
+            keystoreFile.writeText(keyPair.privateKey.key.toString())
+        } else {
+            keyPair = PrivateKey(keystoreFile.readText().toBigInteger()).toECKeyPair()
+        }
     }
 
     val rpc = HttpEthereumRPC(chainRPCURL)
