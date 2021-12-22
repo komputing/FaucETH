@@ -1,24 +1,42 @@
 package org.komputing.fauceth
 
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
+import kotlinx.coroutines.delay
+import okhttp3.*
+import java.io.IOException
 import java.time.Duration
 
 // very crude for now
-fun verifyCaptcha(hCaptchaResponse: String, hCaptchaSecret: String): Boolean {
-    val body = "response=$hCaptchaResponse&secret=$hCaptchaSecret"
+suspend fun verifyCaptcha(hCaptchaResponse: String, hCaptchaSecret: String): Boolean {
 
-    val httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build()
+    val client = OkHttpClient.Builder()
+        .connectTimeout(Duration.ofSeconds(5))
+        .readTimeout(Duration.ofSeconds(10))
+        .build()
 
-    val request = HttpRequest.newBuilder()
-        .uri(URI.create("https://hcaptcha.com/siteverify"))
+    val request = Request.Builder()
+        .url("https://hcaptcha.com/siteverify")
         .header("Content-Type", "application/x-www-form-urlencoded")
-        .timeout(Duration.ofSeconds(10))
-        .POST(HttpRequest.BodyPublishers.ofString(body)).build()
+        .post(FormBody.Builder().add("response", hCaptchaResponse).add("secret", hCaptchaSecret).build())
+        .build()
 
-    val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
 
-    return response.statusCode() == 200 && response.body().contains("\"success\":true")
+    var attempts = 0
+
+    while (true) {
+
+        try {
+            val response = client.newCall(request).execute()
+            if (response.code == 200) {
+                return (response.body?.string()?.contains("\"success\":true") == true)
+            }
+        } catch (ioe: IOException) {
+            // can happen - we will retry
+        }
+
+        if (attempts == 3) return false
+
+        attempts++
+        delay(500L * attempts)
+    }
+
 }
