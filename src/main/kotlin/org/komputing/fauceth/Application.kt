@@ -26,8 +26,12 @@ import org.kethereum.ens.isPotentialENSDomain
 import org.kethereum.erc55.isValid
 import org.kethereum.extensions.transactions.encode
 import org.kethereum.model.*
+import org.kethereum.rpc.BaseEthereumRPC
+import org.kethereum.rpc.ConsoleLoggingTransportWrapper
 import org.kethereum.rpc.HttpEthereumRPC
+import org.kethereum.rpc.HttpTransport
 import org.kethereum.rpc.min3.getMin3RPC
+import org.komputing.fauceth.FaucethLogLevel.*
 import org.walleth.khex.toHexString
 import java.io.File
 import java.lang.IllegalStateException
@@ -37,16 +41,21 @@ import java.math.BigInteger
 const val ADDRESS_KEY = "address"
 val keystoreFile = File("fauceth_keystore.json")
 val ens = ENS(getMin3RPC())
+val config = FaucethConfig()
 
 fun main(args: Array<String>) = io.ktor.server.netty.EngineMain.main(args)
 
 fun Application.module() {
 
-    val config = FaucethConfig()
-
-    val rpc = HttpEthereumRPC(config.chainRPCURL)
+    val rpc = if (config.logging == VERBOSE) {
+        BaseEthereumRPC(ConsoleLoggingTransportWrapper(HttpTransport(config.chainRPCURL)))
+    } else {
+        HttpEthereumRPC(config.chainRPCURL)
+    }
 
     val initialNonce = rpc.getTransactionCount(config.keyPair.toAddress())
+
+    log(INFO, "Got initial nonce: $initialNonce for address ${config.keyPair.toAddress()}")
 
     val atomicNonce = AtomicNonce(initialNonce!!)
 
@@ -121,7 +130,7 @@ fun Application.module() {
             }
         }
         get("/admin") {
-
+            log(VERBOSE, "Serving /admin")
             call.respondHtml {
                 body {
                     b {
@@ -139,6 +148,7 @@ fun Application.module() {
         }
         post("/request") {
             val receiveParameters = call.receiveParameters()
+            log(VERBOSE, "Serving /request with parameters $receiveParameters")
 
             val captchaResult: Boolean = verifyCaptcha(receiveParameters["h-captcha-response"] ?: "", config.hcaptchaSecret)
             var address = Address(receiveParameters[ADDRESS_KEY] ?: "")
@@ -150,13 +160,17 @@ fun Application.module() {
                     }
                 } catch (e: Exception) {
                 }
+                log(INFO, "Resolved ${ensName.string} tp $address")
             }
 
             if (!address.isValid() && ensName?.isPotentialENSDomain() == true) {
+                log(ERROR, "Could not resolve ENS name for ${ensName.string}")
                 call.respondText("""Swal.fire("Error", "Could not resolve ENS name", "error");""")
             } else if (!address.isValid()) {
+                log(ERROR, "Address invalid $address")
                 call.respondText("""Swal.fire("Error", "Address invalid", "error");""")
             } else if (!captchaResult) {
+                log(ERROR, "Could not verify CAPTCHA")
                 call.respondText("""Swal.fire("Error", "Could not verify your humanity", "error");""")
             } else {
 
@@ -170,7 +184,7 @@ fun Application.module() {
 
                 val feeSuggestionResult = retry(decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
                     val feeSuggestionResults = suggestEIP1559Fees(rpc)
-
+                    log(VERBOSE, "Got FeeSuggestionResults $feeSuggestionResults")
                     (feeSuggestionResults.keys.minOrNull() ?: throw IllegalArgumentException("Could not get 1559 fees")).let {
                         feeSuggestionResults[it]
                     }
@@ -179,11 +193,16 @@ fun Application.module() {
                 tx.maxPriorityFeePerGas = feeSuggestionResult!!.maxPriorityFeePerGas
                 tx.maxFeePerGas = feeSuggestionResult.maxFeePerGas
 
+                log(INFO, "Signing transaction $tx")
                 val signature = tx.signViaEIP1559(config.keyPair)
 
                 val txHash: String = retry(decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
                     val res = rpc.sendRawTransaction(tx.encode(signature).toHexString())
-                    if (res?.startsWith("0x") != true) throw IllegalStateException("Got no hash from RPC for tx")
+
+                    if (res?.startsWith("0x") != true) {
+                        log(ERROR, "sendRawTransaction got no hash $res")
+                        throw IllegalStateException("Got no hash from RPC for tx")
+                    }
                     res
                 }
 
@@ -200,4 +219,6 @@ fun Application.module() {
 
 }
 
-
+fun log(level: FaucethLogLevel, msg: String) {
+    if (config.logging >= level) println("$level: $msg")
+}
