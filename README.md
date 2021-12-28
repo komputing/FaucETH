@@ -39,7 +39,7 @@ Make sure to replace the values with yours. You can also inject these properties
 
 Optional properties you can set are `app.title`, `app.imageURL`, `app.amount`, `app.logging`, app.ethkey` or `chain.explorer`
 
-You can change the port by setting the environment variable `PORT` or passing it as an command line argument like this:
+You can change the port by setting the environment variable `PORT` or passing it as a command line argument like this:
 `./bin/fauceth -port=420`
 the default port is `8080`
 
@@ -47,9 +47,9 @@ after you started the app you can see the address by accessing `locahost:8080/ad
 
 # Dream
 
-What would be reall nice would be a web3 faucet - if anyone has ideas how to realize it please contact me. The problem I cannot overcome is how to validate a captcha without a backend.
+What would be real nice would be a web3 faucet - if anyone has ideas how to realize it please contact me. The problem I cannot overcome is how to validate a captcha without a backend.
 
-Yea you could use a PoH blockchain like idena or a dapp like Proof of Humanity or brightId - but often you need the faucet to get started with crypto - so there is a hen and a egg problem here.
+Yea you could use a PoH blockchain like idena or a dapp like Proof of Humanity or brightId - but often you need the faucet to get started with crypto - so there is a hen and egg problem here.
 
 # License
 
