@@ -1,4 +1,4 @@
-package org.komputing.fauceth
+package org.komputing.fauceth.util
 
 import java.math.BigInteger
 import java.util.concurrent.atomic.AtomicReference
