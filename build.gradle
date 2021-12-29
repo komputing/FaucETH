@@ -41,6 +41,8 @@ dependencies {
     implementation "com.github.komputing.kethereum:ens:${KETHEREUM_VERSION}"
     implementation "com.github.komputing.kethereum:keystore:${KETHEREUM_VERSION}"
 
+   implementation "com.github.komputing:kaptcha:1.0"
+
     implementation "com.natpryce:konfig:1.6.10.0"
     implementation "com.github.walleth:khex:0.6"
 }

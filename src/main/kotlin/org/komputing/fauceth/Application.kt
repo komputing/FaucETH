@@ -122,8 +122,7 @@ fun Application.module() {
         post("/request") {
             val receiveParameters = call.receiveParameters()
             log(VERBOSE, "Serving /request with parameters $receiveParameters")
-
-            val captchaResult: Boolean = verifyCaptcha(receiveParameters["h-captcha-response"] ?: "", config.hcaptchaSecret)
+            val captchaResult: Boolean = receiveParameters["h-captcha-response"]?.let { captchaVerifier.verifyCaptcha(it) } ?: false
             var address = Address(receiveParameters[ADDRESS_KEY] ?: "")
             val ensName = receiveParameters[ADDRESS_KEY]?.let { name -> ENSName(name) }
             if (ensName?.isPotentialENSDomain() == true) {
