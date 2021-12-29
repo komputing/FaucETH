@@ -11,21 +11,15 @@ import io.ktor.request.receiveParameters
 import io.ktor.response.*
 import io.ktor.routing.*
 import kotlinx.html.*
-import org.kethereum.DEFAULT_GAS_LIMIT
 import org.kethereum.ETH_IN_WEI
 import org.kethereum.crypto.toAddress
 import org.kethereum.eip137.model.ENSName
-import org.kethereum.eip1559.signer.signViaEIP1559
-import org.kethereum.eip1559_fee_oracle.suggestEIP1559Fees
 import org.kethereum.ens.isPotentialENSDomain
 import org.kethereum.erc55.isValid
-import org.kethereum.extensions.transactions.encode
 import org.kethereum.model.*
 import org.komputing.fauceth.FaucethLogLevel.*
 import org.komputing.fauceth.util.AtomicNonce
 import org.komputing.fauceth.util.log
-import org.walleth.khex.toHexString
-import java.lang.IllegalStateException
 import java.math.BigDecimal
 
 fun main(args: Array<String>) = io.ktor.server.netty.EngineMain.main(args)
@@ -128,8 +122,7 @@ fun Application.module() {
         post("/request") {
             val receiveParameters = call.receiveParameters()
             log(VERBOSE, "Serving /request with parameters $receiveParameters")
-
-            val captchaResult: Boolean = verifyCaptcha(receiveParameters["h-captcha-response"] ?: "", config.hcaptchaSecret)
+            val captchaResult: Boolean = receiveParameters["h-captcha-response"]?.let { captchaVerifier.verifyCaptcha(it) } ?: false
             var address = Address(receiveParameters[ADDRESS_KEY] ?: "")
             val ensName = receiveParameters[ADDRESS_KEY]?.let { name -> ENSName(name) }
             if (ensName?.isPotentialENSDomain() == true) {
@@ -153,37 +146,7 @@ fun Application.module() {
                 call.respondText("""Swal.fire("Error", "Could not verify your humanity", "error");""")
             } else {
 
-                val tx = createEmptyTransaction().apply {
-                    to = address
-                    value = config.amount
-                    nonce = atomicNonce.getAndIncrement()
-                    gasLimit = DEFAULT_GAS_LIMIT
-                    chain = config.chainId
-                }
-
-                val feeSuggestionResult = retry(decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
-                    val feeSuggestionResults = suggestEIP1559Fees(rpc)
-                    log(VERBOSE, "Got FeeSuggestionResults $feeSuggestionResults")
-                    (feeSuggestionResults.keys.minOrNull() ?: throw IllegalArgumentException("Could not get 1559 fees")).let {
-                        feeSuggestionResults[it]
-                    }
-                }
-
-                tx.maxPriorityFeePerGas = feeSuggestionResult!!.maxPriorityFeePerGas
-                tx.maxFeePerGas = feeSuggestionResult.maxFeePerGas
-
-                log(INFO, "Signing transaction $tx")
-                val signature = tx.signViaEIP1559(config.keyPair)
-
-                val txHash: String = retry(decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
-                    val res = rpc.sendRawTransaction(tx.encode(signature).toHexString())
-
-                    if (res?.startsWith("0x") != true) {
-                        log(ERROR, "sendRawTransaction got no hash $res")
-                        throw IllegalStateException("Got no hash from RPC for tx")
-                    }
-                    res
-                }
+                val txHash: String = sendTransaction(address, atomicNonce)
 
                 val amountString = BigDecimal(config.amount).divide(BigDecimal(ETH_IN_WEI))
                 val msg = if (config.chainExplorer != null) {
@@ -195,5 +158,4 @@ fun Application.module() {
             }
         }
     }
-
 }
