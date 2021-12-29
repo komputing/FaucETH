@@ -1,15 +1,12 @@
 package org.komputing.fauceth.util
 
 import java.math.BigInteger
+import java.math.BigInteger.ONE
 import java.util.concurrent.atomic.AtomicReference
 
 class AtomicNonce(initial: BigInteger) {
-    private val current: AtomicReference<BigInteger>
+    private val current = AtomicReference(initial)
 
-    init {
-        current = AtomicReference(initial)
-    }
-
-    fun getAndIncrement(): BigInteger =current.getAndAccumulate(BigInteger.ONE) { previous, x -> previous.add(x) }
-    fun get() : BigInteger = current.get()
+    fun getAndIncrement(): BigInteger = current.getAndAccumulate(ONE) { previous, x -> previous.add(x) }
+    fun get(): BigInteger = current.get()
 }
