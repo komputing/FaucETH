@@ -1,12 +1,14 @@
 package org.komputing.fauceth
 
 import com.natpryce.konfig.*
+import org.ethereum.lists.chains.model.Chain
 import org.kethereum.ETH_IN_WEI
 import org.kethereum.crypto.createEthereumKeyPair
 import org.kethereum.crypto.toECKeyPair
 import org.kethereum.model.ECKeyPair
 import org.kethereum.model.PrivateKey
 import java.io.File
+import java.io.IOException
 import java.lang.IllegalArgumentException
 import java.math.BigInteger
 import kotlin.system.exitProcess
@@ -34,6 +36,10 @@ class FaucethConfig {
         PrivateKey(keystoreFile.readText().toBigInteger()).toECKeyPair()
     }
 
+    val chains: List<BigInteger> = config.getOrNull(Key("app.chains", stringType))?.let { chainIdString ->
+        chainIdString.split(",").map { BigInteger(it) }
+    } ?: emptyList()
+
     val hcaptchaSecret = config[Key("hcaptcha.secret", stringType)]
     val hcaptchaSiteKey = config[Key("hcaptcha.sitekey", stringType)]
 
@@ -41,14 +47,10 @@ class FaucethConfig {
     val appHeroImage = config.getOrNull(Key("app.imageURL", stringType))
     val amount = BigInteger(config.getOrNull(Key("app.amount", stringType)) ?: "$ETH_IN_WEI")
 
-    val chainRPCURL = config[Key("chain.rpc", stringType)]
-    val chainExplorer = config.getOrNull(Key("chain.explorer", stringType))
-    val chainId = BigInteger(config[Key("chain.id", stringType)])
-
     val logging = try {
         config.getOrNull(Key("app.logging", stringType))?.let {
             FaucethLogLevel.valueOf(it.uppercase())
-        }?:FaucethLogLevel.INFO
+        } ?: FaucethLogLevel.INFO
     } catch (e: IllegalArgumentException) {
         println("value for app.logging invalid - possible values: " + FaucethLogLevel.values().joinToString(","))
         exitProcess(1)
