@@ -48,3 +48,16 @@
   justify-content: right;
   align-items: center;
 }
+
+.options {
+  border: 1px solid #e5e5e5;
+  padding: 10px;
+}
+
+select {
+  border: 1px solid #e5e5e5;
+  font-size: 14px;
+  width: 380px;
+  width: %;
+  background: white;
+}

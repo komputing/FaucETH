@@ -19,21 +19,21 @@ import java.lang.IllegalStateException
 import java.math.BigDecimal
 import java.math.BigInteger
 
-suspend fun sendTransaction(address: Address, atomicNonce: AtomicNonce): String {
+suspend fun sendTransaction(address: Address, txChain: ChainWithRPCAndNonce): String {
 
     val tx = createEmptyTransaction().apply {
         to = address
         value = config.amount
-        nonce = atomicNonce.getAndIncrement()
+        nonce = txChain.nonce.getAndIncrement()
         gasLimit = DEFAULT_GAS_LIMIT
-        chain = config.chainId
+        chain = txChain.staticChainInfo.chainId.toBigInteger()
     }
 
     val txHashList = mutableListOf<String>()
 
     while (true) {
         val feeSuggestionResult = retry(decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
-            val feeSuggestionResults = suggestEIP1559Fees(rpc)
+            val feeSuggestionResults = suggestEIP1559Fees(txChain.rpc)
             log(FaucethLogLevel.VERBOSE, "Got FeeSuggestionResults $feeSuggestionResults")
             (feeSuggestionResults.keys.minOrNull() ?: throw IllegalArgumentException("Could not get 1559 fees")).let {
                 feeSuggestionResults[it]
@@ -57,7 +57,7 @@ suspend fun sendTransaction(address: Address, atomicNonce: AtomicNonce): String 
 
         try {
             val txHash: String = retry(limitAttempts(5) + decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
-                val res = rpc.sendRawTransaction(tx.encode(signature).toHexString())
+                val res = txChain.rpc.sendRawTransaction(tx.encode(signature).toHexString())
 
                 if (res?.startsWith("0x") != true) {
                     log(FaucethLogLevel.ERROR, "sendRawTransaction got no hash $res")
@@ -76,7 +76,7 @@ suspend fun sendTransaction(address: Address, atomicNonce: AtomicNonce): String 
         repeat(20) { // after 20 attempts we will try with a new fee calculation
             txHashList.forEach { hash ->
                 // we wait for *any* tx we signed in this context to confirm - there could be (edge)cases where a old tx confirms and so a replacement tx will not
-                txBlockNumber = rpc.getTransactionByHash(hash)?.transaction?.blockNumber
+                txBlockNumber = txChain.rpc.getTransactionByHash(hash)?.transaction?.blockNumber
                 if (txBlockNumber != null) {
                     return hash
                 }
