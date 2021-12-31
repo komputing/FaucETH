@@ -39,9 +39,14 @@ fun Application.module() {
             val requestedChain = call.request.queryParameters[CHAIN_KEY]?.toLongOrNull().let { chainId ->
                 chains.firstOrNull { it.staticChainInfo.chainId == chainId }
             }
+            val title = config.appTitle
+                .replace("%CHAINNAME", requestedChain?.staticChainInfo?.name ?: "")
+                .replace("%CHAINTITLE", requestedChain?.staticChainInfo?.title ?: "")
+                .replace("%CHAINSHORTNAME", requestedChain?.staticChainInfo?.shortName ?: "")
+                .trim()
             call.respondHtml {
                 head {
-                    title { +config.appTitle }
+                    title { +title }
 
                     script(src = "https://js.hcaptcha.com/1/api.js") {}
 
@@ -74,7 +79,7 @@ fun Application.module() {
                                 id = "mainForm"
 
                                 h1(classes = "center") {
-                                    +config.appTitle
+                                    +title
                                 }
                                 config.appHeroImage?.let { url ->
                                     div(classes = "center") {

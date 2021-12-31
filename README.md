@@ -31,13 +31,13 @@ your working dir needs a file called `fauceth.properties` that looks like this:
 hcaptcha.secret=your_hcaptcha_secret
 hcaptcha.sitekey=your_hcaptcha_site_key
 
-chain.id=1337702
-chain.rpc=https://rpc.kintsugi.themerge.dev
+app.chains=1337702,5
 ```
 
 Make sure to replace the values with yours. You can also inject these properties via environment variables or system properties.
 
-Optional properties you can set are `app.title`, `app.imageURL`, `app.amount`, `app.logging`, `app.ethkey` or `chain.explorer`
+Optional properties you can set are `app.title`, `app.imageURL`, `app.amount`, `app.logging` or `app.ethkey`
+In `app.title` you can use `%CHAINNAME`, `%CHAINTITLE`, `%CHAINSHORTNAME` - this is especially useful if you support multiple chains.
 
 You can change the port by setting the environment variable `PORT` or passing it as a command line argument like this:
 `./bin/fauceth -port=420`
