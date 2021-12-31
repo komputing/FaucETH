@@ -66,10 +66,12 @@ class ChainWithRPCAndNonce(
 )
 
 val chains = unfilteredChains.filter { config.chains.contains(BigInteger.valueOf(it.chainId)) }.map {
+    val rpcURL = it.rpc.first().replace("\${INFURA_API_KEY}", config.infuraProject)
+    println(rpcURL)
     val rpc = if (config.logging == VERBOSE) {
-        BaseEthereumRPC(ConsoleLoggingTransportWrapper(HttpTransport(it.rpc.first())))
+        BaseEthereumRPC(ConsoleLoggingTransportWrapper(HttpTransport(rpcURL)))
     } else {
-        HttpEthereumRPC(it.rpc.first())
+        HttpEthereumRPC(rpcURL)
     }
 
     var initialNonce: BigInteger? = null

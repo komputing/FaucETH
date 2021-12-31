@@ -43,6 +43,8 @@ class FaucethConfig {
     val hcaptchaSecret = config[Key("hcaptcha.secret", stringType)]
     val hcaptchaSiteKey = config[Key("hcaptcha.sitekey", stringType)]
 
+    val infuraProject = config[Key("infura.projectid", stringType)]
+
     val appTitle = config.getOrElse(Key("app.title", stringType), "FaucETH")
     val appHeroImage = config.getOrNull(Key("app.imageURL", stringType))
     val amount = BigInteger(config.getOrNull(Key("app.amount", stringType)) ?: "$ETH_IN_WEI")
