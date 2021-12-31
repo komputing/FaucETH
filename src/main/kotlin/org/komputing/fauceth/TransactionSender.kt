@@ -72,7 +72,8 @@ suspend fun sendTransaction(address: Address, txChain: ChainWithRPCAndNonce): St
             // might be "Replacement tx too low", "already known" or "nonce too low" when previous tx was accepted
         }
 
-        var txBlockNumber: BigInteger? = null
+        var txBlockNumber: BigInteger?
+
         repeat(20) { // after 20 attempts we will try with a new fee calculation
             txHashList.forEach { hash ->
                 // we wait for *any* tx we signed in this context to confirm - there could be (edge)cases where a old tx confirms and so a replacement tx will not
