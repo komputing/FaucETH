@@ -108,11 +108,11 @@ fun Application.module() {
                                 div(classes = "h-captcha center") {
                                     attributes["data-sitekey"] = config.hcaptchaSiteKey
                                 }
-                                div(classes = "center") {
-                                    button(classes = "button") {
-                                        onClick = "submitForm()"
-                                        +"Request funds"
-                                    }
+                            }
+                            div(classes = "center") {
+                                button(classes = "button") {
+                                    onClick = "submitForm()"
+                                    +"Request funds"
                                 }
                             }
                         }
