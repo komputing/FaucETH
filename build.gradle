@@ -25,6 +25,7 @@ dependencies {
     implementation "com.michael-bull.kotlin-retry:kotlin-retry:1.0.9"
 
     implementation "com.github.komputing.kethereum:eip1559_signer:$KETHEREUM_VERSION"
+    implementation "com.github.komputing.kethereum:eip1559_detector:$KETHEREUM_VERSION"
     implementation "com.github.komputing.kethereum:eip1559_feeOracle:$KETHEREUM_VERSION"
 
     implementation "com.github.komputing.kethereum:erc681:${KETHEREUM_VERSION}"
@@ -33,6 +34,7 @@ dependencies {
     implementation "com.github.komputing.kethereum:flows:${KETHEREUM_VERSION}"
     implementation "com.github.komputing.kethereum:rpc:${KETHEREUM_VERSION}"
     implementation "com.github.komputing.kethereum:erc55:${KETHEREUM_VERSION}"
+    implementation "com.github.komputing.kethereum:eip155:${KETHEREUM_VERSION}"
     implementation "com.github.komputing.kethereum:rpc_min3:${KETHEREUM_VERSION}"
     implementation "com.github.komputing.kethereum:model:${KETHEREUM_VERSION}"
     implementation "com.github.komputing.kethereum:crypto:${KETHEREUM_VERSION}"

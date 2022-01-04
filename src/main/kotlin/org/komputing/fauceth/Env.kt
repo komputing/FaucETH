@@ -1,6 +1,5 @@
 package org.komputing.fauceth
 
-import com.github.michaelbull.retry.retry
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
@@ -21,7 +20,6 @@ import java.io.File
 import java.io.FileOutputStream
 import java.math.BigInteger
 import kotlin.system.exitProcess
-
 
 const val ADDRESS_KEY = "address"
 const val CHAIN_KEY = "chain"
@@ -62,7 +60,8 @@ val unfilteredChains = chainsAdapter.fromJson(chainsDefinitionFile.source().buff
 class ChainWithRPCAndNonce(
     val staticChainInfo: Chain,
     val nonce: AtomicNonce,
-    val rpc: EthereumRPC
+    val rpc: EthereumRPC,
+    var useEIP1559: Boolean = true // be optimistic - fallback when no 1559
 )
 
 val chains = unfilteredChains.filter { config.chains.contains(BigInteger.valueOf(it.chainId)) }.map {
@@ -76,9 +75,9 @@ val chains = unfilteredChains.filter { config.chains.contains(BigInteger.valueOf
 
     var initialNonce: BigInteger? = null
 
-    while(initialNonce == null) {
+    while (initialNonce == null) {
         log(INFO, "Fetching initial nonce for chain ${it.name}")
-        initialNonce= rpc.getTransactionCount(config.keyPair.toAddress())
+        initialNonce = rpc.getTransactionCount(config.keyPair.toAddress())
     }
 
     log(INFO, "Got initial nonce for chain ${it.name}: $initialNonce for address ${config.keyPair.toAddress()}")
