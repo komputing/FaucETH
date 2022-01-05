@@ -21,6 +21,7 @@ import org.kethereum.rpc.EthereumRPCException
 import org.komputing.fauceth.util.log
 import org.walleth.khex.toHexString
 import java.io.IOException
+import java.lang.IllegalStateException
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.math.BigInteger.*
@@ -30,16 +31,20 @@ suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): Strin
     val tx = createEmptyTransaction().apply {
         to = address
         value = config.amount
-        nonce = txChain.nonce.getAndIncrement()
+        nonce = txChain.pendingNonce.getAndIncrement()
         from = config.keyPair.toAddress()
         chain = txChain.staticChainInfo.chainId.toBigInteger()
+        creationEpochSecond = System.currentTimeMillis()
     }
 
     val txHashList = mutableListOf<String>()
 
     try {
         while (true) {
-            tx.gasLimit = txChain.rpc.estimateGas(tx) // TODO usually with most chains it is fixed at 21k - so there is room for RPC call amount optimize here
+            tx.gasLimit = retry {
+                // TODO usually with most chains it is fixed at 21k - so there is room for RPC call amount optimize here
+                txChain.rpc.estimateGas(tx) ?: throw EthereumRPCException("Could not estimate gas limit", 404)
+            }
             if (txChain.useEIP1559) {
                 val handle1559NotAvailable: RetryPolicy<Throwable> = {
                     if (reason is EthereumRPCException && reason.message == "the method eth_feeHistory does not exist/is not available") StopRetrying else ContinueRetrying
@@ -61,11 +66,15 @@ suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): Strin
                             tx.maxFeePerGas = feeSuggestionResult.maxFeePerGas
                             log(FaucethLogLevel.INFO, "Signing Transaction $tx")
                         } else {
-                            // replacement fee (e.g. there was a surge after we calculated the fee and tx is not going in this way
-                            tx.maxPriorityFeePerGas = feeSuggestionResult.maxPriorityFeePerGas.max(tx.maxPriorityFeePerGas!!)
-                            // either replace with new feeSuggestion or 20% more than previous to prevent replacement tx underpriced
-                            tx.maxFeePerGas = feeSuggestionResult.maxFeePerGas.max(tx.maxFeePerGas!!.toBigDecimal().multiply(BigDecimal("1.2")).toBigInteger())
-                            log(FaucethLogLevel.INFO, "Signing Transaction with replacement fee $tx")
+                            if (System.currentTimeMillis() - (tx.creationEpochSecond ?: System.currentTimeMillis()) > 20000) {
+                                tx.creationEpochSecond = System.currentTimeMillis()
+                                // replacement fee (e.g. there was a surge after we calculated the fee and tx is not going in this way
+                                tx.maxPriorityFeePerGas = feeSuggestionResult.maxPriorityFeePerGas.max(tx.maxPriorityFeePerGas!!)
+                                // either replace with new feeSuggestion or 20% more than previous to prevent replacement tx underpriced
+                                tx.maxFeePerGas =
+                                    feeSuggestionResult.maxFeePerGas.max(tx.maxFeePerGas!!.toBigDecimal().multiply(BigDecimal("1.2")).toBigInteger())
+                                log(FaucethLogLevel.INFO, "Signing Transaction with replacement fee $tx")
+                            }
                         }
                     }
                 } catch (e: EthereumRPCException) {
@@ -109,16 +118,19 @@ suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): Strin
 
             var txBlockNumber: BigInteger?
 
-            repeat(20) { // after 20 attempts we will try with a new fee calculation
-                txHashList.forEach { hash ->
-                    // we wait for *any* tx we signed in this context to confirm - there could be (edge)cases where a old tx confirms and so a replacement tx will not
-                    txBlockNumber = txChain.rpc.getTransactionByHash(hash)?.transaction?.blockNumber
-                    if (txBlockNumber != null) {
-                        return hash
+            if (tx.nonce == txChain.confirmedNonce.get().plus(ONE)) {
+                repeat(20) { // after 20 attempts we will try with a new fee calculation
+                    txHashList.forEach { hash ->
+                        // we wait for *any* tx we signed in this context to confirm - there could be (edge)cases where a old tx confirms and so a replacement tx will not
+                        txBlockNumber = txChain.rpc.getTransactionByHash(hash)?.transaction?.blockNumber
+                        if (txBlockNumber != null) {
+                            tx.nonce?.let { txChain.confirmedNonce.setPotentialNewMax(it) }
+                            return hash
+                        }
+                        delay(100)
                     }
-                    delay(100)
+                    delay(700)
                 }
-                delay(700)
             }
         }
     } catch (rpce: EthereumRPCException) {

@@ -9,4 +9,5 @@ class AtomicNonce(initial: BigInteger) {
 
     fun getAndIncrement(): BigInteger = current.getAndAccumulate(ONE) { previous, x -> previous.add(x) }
     fun get(): BigInteger = current.get()
+    fun setPotentialNewMax(new: BigInteger): BigInteger = current.getAndAccumulate(new) { previous, x -> previous.max(x) }
 }

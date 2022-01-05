@@ -19,6 +19,7 @@ import org.komputing.kaptcha.HCaptcha
 import java.io.File
 import java.io.FileOutputStream
 import java.math.BigInteger
+import java.math.BigInteger.ONE
 import kotlin.system.exitProcess
 
 const val ADDRESS_KEY = "address"
@@ -59,7 +60,8 @@ val unfilteredChains = chainsAdapter.fromJson(chainsDefinitionFile.source().buff
 
 class ExtendedChainInfo(
     val staticChainInfo: Chain,
-    val nonce: AtomicNonce,
+    val pendingNonce: AtomicNonce,
+    val confirmedNonce: AtomicNonce,
     val rpc: EthereumRPC,
     var useEIP1559: Boolean = true, // be optimistic - fallback when no 1559
     var lastSeenBalance: BigInteger? = null
@@ -83,9 +85,12 @@ val chains = unfilteredChains.filter { config.chains.contains(BigInteger.valueOf
 
     log(INFO, "Got initial nonce for chain ${it.name}: $initialNonce for address ${config.keyPair.toAddress()}")
 
-    val atomicNonce = AtomicNonce(initialNonce)
-
-    ExtendedChainInfo(it, atomicNonce, rpc)
+    ExtendedChainInfo(
+        it,
+        confirmedNonce = AtomicNonce(initialNonce.minus(ONE)),
+        pendingNonce = AtomicNonce(initialNonce),
+        rpc = rpc
+    )
 }
 
 internal fun fail(msg: String): Nothing {

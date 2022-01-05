@@ -10,7 +10,6 @@ import io.ktor.http.content.*
 import io.ktor.request.receiveParameters
 import io.ktor.response.*
 import io.ktor.routing.*
-import kotlinx.coroutines.flow.channelFlow
 import kotlinx.html.*
 import org.kethereum.ETH_IN_WEI
 import org.kethereum.crypto.toAddress
@@ -21,7 +20,6 @@ import org.kethereum.model.*
 import org.komputing.fauceth.FaucethLogLevel.*
 import org.komputing.fauceth.util.log
 import java.math.BigDecimal
-import java.math.BigInteger
 
 fun main(args: Array<String>) = io.ktor.server.netty.EngineMain.main(args)
 
@@ -140,9 +138,14 @@ fun Application.module() {
                             +"Chain: ${it.staticChainInfo.name}"
                         }
                         b {
-                            +"Nonce: "
+                            +"pending Nonce: "
                         }
-                        +it.nonce.get().toString()
+                        +it.pendingNonce.get().toString()
+                        br
+                        b {
+                            +"confirmed Nonce: "
+                        }
+                        +it.confirmedNonce.get().toString()
                         br
                         b {
                             +"Balance: "
