@@ -57,11 +57,12 @@ var chainsAdapter: JsonAdapter<List<Chain>> = moshi.adapter(listMyData)
 
 val unfilteredChains = chainsAdapter.fromJson(chainsDefinitionFile.source().buffer()) ?: fail("Could not read chains.json")
 
-class ChainWithRPCAndNonce(
+class ExtendedChainInfo(
     val staticChainInfo: Chain,
     val nonce: AtomicNonce,
     val rpc: EthereumRPC,
-    var useEIP1559: Boolean = true // be optimistic - fallback when no 1559
+    var useEIP1559: Boolean = true, // be optimistic - fallback when no 1559
+    var lastSeenBalance: BigInteger? = null
 )
 
 val chains = unfilteredChains.filter { config.chains.contains(BigInteger.valueOf(it.chainId)) }.map {
@@ -82,9 +83,9 @@ val chains = unfilteredChains.filter { config.chains.contains(BigInteger.valueOf
 
     log(INFO, "Got initial nonce for chain ${it.name}: $initialNonce for address ${config.keyPair.toAddress()}")
 
-    val atomicNonce = AtomicNonce(initialNonce!!)
+    val atomicNonce = AtomicNonce(initialNonce)
 
-    ChainWithRPCAndNonce(it, atomicNonce, rpc)
+    ExtendedChainInfo(it, atomicNonce, rpc)
 }
 
 internal fun fail(msg: String): Nothing {

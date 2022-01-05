@@ -143,6 +143,11 @@ fun Application.module() {
                             +"Nonce: "
                         }
                         +it.nonce.get().toString()
+                        br
+                        b {
+                            +"Balance: "
+                        }
+                        +it.lastSeenBalance.toString()
                     }
                 }
             }
@@ -176,16 +181,20 @@ fun Application.module() {
             } else {
 
                 val chain = chains.findLast { it.staticChainInfo.chainId == receiveParameters["chain"]?.toLong() }!!
-                val txHash: String = sendTransaction(address, chain)
+                val txHash = sendTransaction(address, chain)
 
-                val amountString = BigDecimal(config.amount).divide(BigDecimal(ETH_IN_WEI))
-                val explorer = chain.staticChainInfo.explorers?.firstOrNull()?.url
-                val msg = if (explorer != null) {
-                    "send $amountString ETH (<a href='$explorer/tx/$txHash'>view here</a>)"
+                if (txHash!=null) {
+                    val amountString = BigDecimal(config.amount).divide(BigDecimal(ETH_IN_WEI))
+                    val explorer = chain.staticChainInfo.explorers?.firstOrNull()?.url
+                    val msg = if (explorer != null) {
+                        "send $amountString ETH (<a href='$explorer/tx/$txHash'>view here</a>)"
+                    } else {
+                        "send $amountString ETH (transaction: $txHash)"
+                    }
+                    call.respondText("""Swal.fire("Transaction send", "$msg", "success");""")
                 } else {
-                    "send $amountString ETH (transaction: $txHash)"
+                    call.respondText("""Swal.fire("Faucet dry", "Unfortunately the faucet ran out of funds on this chain.", "error");""")
                 }
-                call.respondText("""Swal.fire("Transaction send", "$msg", "success");""")
 
             }
         }
