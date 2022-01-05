@@ -47,7 +47,7 @@ suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): Strin
             }
             if (txChain.useEIP1559) {
                 val handle1559NotAvailable: RetryPolicy<Throwable> = {
-                    if (reason is EthereumRPCException && reason.message == "the method eth_feeHistory does not exist/is not available") StopRetrying else ContinueRetrying
+                    if (reason is EthereumRPCException && (reason.message == "the method eth_feeHistory does not exist/is not available") || (reason.message == "rpc method is not whitelisted")) StopRetrying else ContinueRetrying
                 }
 
                 try {
