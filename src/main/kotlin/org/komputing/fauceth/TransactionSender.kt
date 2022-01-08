@@ -34,7 +34,6 @@ suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): Strin
         nonce = txChain.pendingNonce.getAndIncrement()
         from = config.keyPair.toAddress()
         chain = txChain.staticChainInfo.chainId.toBigInteger()
-        creationEpochSecond = System.currentTimeMillis()
     }
 
     val txHashList = mutableListOf<String>()
@@ -50,36 +49,38 @@ suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): Strin
                     if (reason is EthereumRPCException && (reason.message == "the method eth_feeHistory does not exist/is not available") || (reason.message == "rpc method is not whitelisted")) StopRetrying else ContinueRetrying
                 }
 
-                try {
-                    retry(handle1559NotAvailable + decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
+                if (tx.maxPriorityFeePerGas == null || System.currentTimeMillis() - (tx.creationEpochSecond ?: System.currentTimeMillis()) > 20000) {
+                    try {
+                        retry(handle1559NotAvailable + decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
 
-                        val feeSuggestionResults = suggestEIP1559Fees(txChain.rpc)
-                        log(FaucethLogLevel.VERBOSE, "Got FeeSuggestionResults $feeSuggestionResults")
-                        (feeSuggestionResults.keys.minOrNull() ?: throw IllegalArgumentException("Could not get 1559 fees")).let {
-                            feeSuggestionResults[it]
-                        }
+                            val feeSuggestionResults = suggestEIP1559Fees(txChain.rpc)
+                            log(FaucethLogLevel.VERBOSE, "Got FeeSuggestionResults $feeSuggestionResults")
+                            (feeSuggestionResults.keys.minOrNull() ?: throw IllegalArgumentException("Could not get 1559 fees")).let {
+                                feeSuggestionResults[it]
+                            }
 
-                    }?.let { feeSuggestionResult ->
-                        if (tx.maxPriorityFeePerGas == null) {
-                            // initial fee
-                            tx.maxPriorityFeePerGas = feeSuggestionResult.maxPriorityFeePerGas
-                            tx.maxFeePerGas = feeSuggestionResult.maxFeePerGas
-                            log(FaucethLogLevel.INFO, "Signing Transaction $tx")
-                        } else {
-                            if (System.currentTimeMillis() - (tx.creationEpochSecond ?: System.currentTimeMillis()) > 20000) {
-                                tx.creationEpochSecond = System.currentTimeMillis()
+                        }?.let { feeSuggestionResult ->
+                            tx.creationEpochSecond = System.currentTimeMillis()
+
+                            if (tx.maxPriorityFeePerGas == null) {
+                                // initial fee
+                                tx.maxPriorityFeePerGas = feeSuggestionResult.maxPriorityFeePerGas
+                                tx.maxFeePerGas = feeSuggestionResult.maxFeePerGas
+                                log(FaucethLogLevel.INFO, "Signing Transaction $tx")
+                            } else {
                                 // replacement fee (e.g. there was a surge after we calculated the fee and tx is not going in this way
                                 tx.maxPriorityFeePerGas = feeSuggestionResult.maxPriorityFeePerGas.max(tx.maxPriorityFeePerGas!!)
                                 // either replace with new feeSuggestion or 20% more than previous to prevent replacement tx underpriced
                                 tx.maxFeePerGas =
                                     feeSuggestionResult.maxFeePerGas.max(tx.maxFeePerGas!!.toBigDecimal().multiply(BigDecimal("1.2")).toBigInteger())
                                 log(FaucethLogLevel.INFO, "Signing Transaction with replacement fee $tx")
+
                             }
                         }
+                    } catch (e: EthereumRPCException) {
+                        log(FaucethLogLevel.INFO, "Chain does not seem to support 1559")
+                        txChain.useEIP1559 = false
                     }
-                } catch (e: EthereumRPCException) {
-                    log(FaucethLogLevel.INFO, "Chain does not seem to support 1559")
-                    txChain.useEIP1559 = false
                 }
             }
 
