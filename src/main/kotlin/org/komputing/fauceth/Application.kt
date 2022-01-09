@@ -34,6 +34,7 @@ fun Application.module() {
         }
         get("/") {
             val address = call.request.queryParameters[ADDRESS_KEY]
+            val callback = call.request.queryParameters[CALLBACK_KEY]
             val requestedChain = call.request.queryParameters[CHAIN_KEY]?.toLongOrNull().let { chainId ->
                 chains.firstOrNull { it.staticChainInfo.chainId == chainId }
             }
@@ -84,7 +85,12 @@ fun Application.module() {
                                         img(src = url, classes = "image")
                                     }
                                 }
-
+                                callback?.let { notNullCallback ->
+                                    hiddenInput {
+                                        name = "callback"
+                                        value = notNullCallback
+                                    }
+                                }
                                 if (chains.size > 1 && requestedChain == null) {
                                     select {
                                         name = "chain"
@@ -161,6 +167,7 @@ fun Application.module() {
 
             val captchaResult: Boolean = receiveParameters["h-captcha-response"]?.let { captchaVerifier.verifyCaptcha(it) } ?: false
             var address = Address(receiveParameters[ADDRESS_KEY] ?: "")
+            val callback = receiveParameters[CALLBACK_KEY]
             val ensName = receiveParameters[ADDRESS_KEY]?.let { name -> ENSName(name) }
             if (ensName?.isPotentialENSDomain() == true) {
                 try {
@@ -182,23 +189,25 @@ fun Application.module() {
                 log(ERROR, "Could not verify CAPTCHA")
                 call.respondText("""Swal.fire("Error", "Could not verify your humanity", "error");""")
             } else {
-
-                val chain = chains.findLast { it.staticChainInfo.chainId == receiveParameters["chain"]?.toLong() }!!
-                val txHash = sendTransaction(address, chain)
-
-                if (txHash!=null) {
-                    val amountString = BigDecimal(config.amount).divide(BigDecimal(ETH_IN_WEI))
-                    val explorer = chain.staticChainInfo.explorers?.firstOrNull()?.url
-                    val msg = if (explorer != null) {
-                        "send $amountString ETH (<a href='$explorer/tx/$txHash'>view here</a>)"
-                    } else {
-                        "send $amountString ETH (transaction: $txHash)"
-                    }
-                    call.respondText("""Swal.fire("Transaction send", "$msg", "success");""")
+                if (callback != null) {
+                    call.respondText("""window.location.replace("$callback");""")
                 } else {
-                    call.respondText("""Swal.fire("Faucet dry", "Unfortunately the faucet ran out of funds on this chain.", "error");""")
-                }
+                    val chain = chains.findLast { it.staticChainInfo.chainId == receiveParameters["chain"]?.toLong() }!!
+                    val txHash = sendTransaction(address, chain)
 
+                    if (txHash != null) {
+                        val amountString = BigDecimal(config.amount).divide(BigDecimal(ETH_IN_WEI))
+                        val explorer = chain.staticChainInfo.explorers?.firstOrNull()?.url
+                        val msg = if (explorer != null) {
+                            "send $amountString ETH (<a href='$explorer/tx/$txHash'>view here</a>)"
+                        } else {
+                            "send $amountString ETH (transaction: $txHash)"
+                        }
+                        call.respondText("""Swal.fire("Transaction send", "$msg", "success");""")
+                    } else {
+                        call.respondText("""Swal.fire("Faucet dry", "Unfortunately the faucet ran out of funds on this chain.", "error");""")
+                    }
+                }
             }
         }
     }

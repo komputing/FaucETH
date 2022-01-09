@@ -23,6 +23,7 @@ import java.math.BigInteger.ONE
 import kotlin.system.exitProcess
 
 const val ADDRESS_KEY = "address"
+const val CALLBACK_KEY = "callback"
 const val CHAIN_KEY = "chain"
 
 val keystoreFile = File("fauceth_keystore.json")
