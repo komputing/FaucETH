@@ -106,14 +106,18 @@ suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): Strin
             txHashList.add(hash.toHexString())
 
             try {
-                val txHash: String = retry(limitAttempts(5) + decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
+                val noRetryWhenKnown: RetryPolicy<Throwable> = {
+                    if (reason is EthereumRPCException && reason.message == "already known") StopRetrying else ContinueRetrying
+                }
+
+                 retry(limitAttempts(5) + noRetryWhenKnown + decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
                     val res = txChain.rpc.sendRawTransaction(encodedTransaction.toHexString())
 
                     if (res?.startsWith("0x") != true) {
                         log(FaucethLogLevel.ERROR, "sendRawTransaction got no hash $res")
                         throw EthereumRPCException("Got no hash from RPC for tx", 404)
                     }
-                    res
+
                 }
 
             } catch (e: EthereumRPCException) {
