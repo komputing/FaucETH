@@ -1,8 +1,5 @@
 package org.komputing.fauceth
 
-import com.github.michaelbull.retry.ContinueRetrying
-import com.github.michaelbull.retry.StopRetrying
-import com.github.michaelbull.retry.policy.RetryPolicy
 import com.github.michaelbull.retry.policy.decorrelatedJitterBackoff
 import com.github.michaelbull.retry.policy.limitAttempts
 import com.github.michaelbull.retry.policy.plus
@@ -19,10 +16,11 @@ import org.kethereum.model.Address
 import org.kethereum.model.ChainId
 import org.kethereum.model.createEmptyTransaction
 import org.kethereum.rpc.EthereumRPCException
+import org.komputing.fauceth.util.handle1559NotAvailable
 import org.komputing.fauceth.util.log
+import org.komputing.fauceth.util.noRetryWhenKnown
 import org.walleth.khex.toHexString
 import java.io.IOException
-import java.lang.IllegalStateException
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.math.BigInteger.*
@@ -46,9 +44,6 @@ suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): Strin
                 txChain.rpc.estimateGas(tx) ?: throw EthereumRPCException("Could not estimate gas limit", 404)
             }
             if (txChain.useEIP1559) {
-                val handle1559NotAvailable: RetryPolicy<Throwable> = {
-                    if (reason is EthereumRPCException && (reason.message == "the method eth_feeHistory does not exist/is not available") || (reason.message == "rpc method is not whitelisted")) StopRetrying else ContinueRetrying
-                }
 
                 if (tx.maxPriorityFeePerGas == null || System.currentTimeMillis() - (tx.creationEpochSecond ?: System.currentTimeMillis()) > 20000) {
                     try {
@@ -106,9 +101,6 @@ suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): Strin
             txHashList.add(hash.toHexString())
 
             try {
-                val noRetryWhenKnown: RetryPolicy<Throwable> = {
-                    if (reason is EthereumRPCException && reason.message == "already known") StopRetrying else ContinueRetrying
-                }
 
                  retry(limitAttempts(5) + noRetryWhenKnown + decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
                     val res = txChain.rpc.sendRawTransaction(encodedTransaction.toHexString())
