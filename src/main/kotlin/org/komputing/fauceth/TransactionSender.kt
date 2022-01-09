@@ -14,6 +14,7 @@ import org.kethereum.eip1559.detector.isEIP1559
 import org.kethereum.eip1559.signer.signViaEIP1559
 import org.kethereum.eip1559_fee_oracle.suggestEIP1559Fees
 import org.kethereum.extensions.transactions.encode
+import org.kethereum.keccakshortcut.keccak
 import org.kethereum.model.Address
 import org.kethereum.model.ChainId
 import org.kethereum.model.createEmptyTransaction
@@ -100,9 +101,13 @@ suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): Strin
                 return null
             }
 
+            val encodedTransaction = tx.encode(signature)
+            val hash = encodedTransaction.keccak()
+            txHashList.add(hash.toHexString())
+
             try {
                 val txHash: String = retry(limitAttempts(5) + decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
-                    val res = txChain.rpc.sendRawTransaction(tx.encode(signature).toHexString())
+                    val res = txChain.rpc.sendRawTransaction(encodedTransaction.toHexString())
 
                     if (res?.startsWith("0x") != true) {
                         log(FaucethLogLevel.ERROR, "sendRawTransaction got no hash $res")
@@ -110,8 +115,6 @@ suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): Strin
                     }
                     res
                 }
-
-                txHashList.add(txHash)
 
             } catch (e: EthereumRPCException) {
                 // might be "Replacement tx too low", "already known" or "nonce too low" when previous tx was accepted
