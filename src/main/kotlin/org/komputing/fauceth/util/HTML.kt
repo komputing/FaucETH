@@ -4,10 +4,10 @@ import kotlinx.html.BODY
 import kotlinx.html.b
 import kotlinx.html.br
 
-internal fun BODY.keyValueHTML(key: String, value: String) {
+internal fun BODY.keyValueHTML(key: String, f: BODY.() -> Unit) {
     b {
         +"$key: "
     }
-    +value
+    f.invoke(this)
     br
 }

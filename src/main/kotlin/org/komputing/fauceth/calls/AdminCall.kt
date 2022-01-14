@@ -3,6 +3,7 @@ package org.komputing.fauceth.calls
 import io.ktor.application.*
 import io.ktor.html.*
 import io.ktor.util.pipeline.*
+import kotlinx.html.a
 import kotlinx.html.b
 import kotlinx.html.body
 import kotlinx.html.h2
@@ -25,9 +26,17 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.adminCall() {
                 h2 {
                     +it.staticChainInfo.name
                 }
-                keyValueHTML("pending Nonce", it.pendingNonce.get().toString())
-                keyValueHTML("confirmed Nonce", it.confirmedNonce.get().toString())
-                keyValueHTML("Balance", it.lastSeenBalance.toString())
+                keyValueHTML("pending Nonce") { +it.pendingNonce.get().toString() }
+                keyValueHTML("confirmed Nonce") { +it.confirmedNonce.get().toString() }
+                keyValueHTML("Balance") { +it.lastSeenBalance.toString() }
+                it.staticChainInfo.explorers?.firstOrNull()?.let {
+                    keyValueHTML("Explorer") {
+                        a {
+                            href = it.url+ "/address/" + config.keyPair.toAddress().toString()
+                            +"link"
+                        }
+                    }
+                }
             }
         }
     }
