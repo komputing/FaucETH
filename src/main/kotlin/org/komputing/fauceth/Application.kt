@@ -18,6 +18,7 @@ import org.kethereum.ens.isPotentialENSDomain
 import org.kethereum.erc55.isValid
 import org.kethereum.model.*
 import org.komputing.fauceth.FaucethLogLevel.*
+import org.komputing.fauceth.util.keyValueHTML
 import org.komputing.fauceth.util.log
 import java.math.BigDecimal
 
@@ -138,24 +139,12 @@ fun Application.module() {
                     }
                     +config.keyPair.toAddress().toString()
                     chains.forEach {
-
                         h2 {
                             +it.staticChainInfo.name
                         }
-                        b {
-                            +"pending Nonce: "
-                        }
-                        +it.pendingNonce.get().toString()
-                        br
-                        b {
-                            +"confirmed Nonce: "
-                        }
-                        +it.confirmedNonce.get().toString()
-                        br
-                        b {
-                            +"Balance: "
-                        }
-                        +it.lastSeenBalance.toString()
+                        keyValueHTML("pending Nonce", it.pendingNonce.get().toString())
+                        keyValueHTML("confirmed Nonce", it.confirmedNonce.get().toString())
+                        keyValueHTML("Balance", it.lastSeenBalance.toString())
                     }
                 }
             }
