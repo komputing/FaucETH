@@ -36,12 +36,8 @@ app.chains=1337702,5
 
 Make sure to replace the values with yours. You can also inject these properties via environment variables or system properties.
 
-Optional properties you can set are `app.title`, `app.imageURL`, `app.amount`, `app.logging` or `app.ethkey`
+Optional properties you can set are `app.title`, `app.imageURL`, `app.amount`, `app.logging`, `app.port` or `app.ethkey`
 In `app.title` you can use `%CHAINNAME`, `%CHAINTITLE`, `%CHAINSHORTNAME` - this is especially useful if you support multiple chains.
-
-You can change the port by setting the environment variable `PORT` or passing it as a command line argument like this:
-`./bin/fauceth -port=420`
-the default port is `8080`
 
 after you started the app you can see the address by accessing `locahost:8080/admin` - this way you can initially fund it.
 

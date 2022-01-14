@@ -45,6 +45,8 @@ class FaucethConfig {
 
     val infuraProject = config[Key("infura.projectid", stringType)]
 
+    val port = config.getOrElse(Key("app.port", intType), 8080)
+
     val appTitle = config.getOrElse(Key("app.title", stringType), "FaucETH")
     val appHeroImage = config.getOrNull(Key("app.imageURL", stringType))
     val amount = BigInteger(config.getOrNull(Key("app.amount", stringType)) ?: "$ETH_IN_WEI")
