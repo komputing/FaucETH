@@ -137,11 +137,10 @@ fun Application.module() {
                         +"Address: "
                     }
                     +config.keyPair.toAddress().toString()
-                    br
                     chains.forEach {
 
-                        p {
-                            +"Chain: ${it.staticChainInfo.name}"
+                        h2 {
+                            +it.staticChainInfo.name
                         }
                         b {
                             +"pending Nonce: "
