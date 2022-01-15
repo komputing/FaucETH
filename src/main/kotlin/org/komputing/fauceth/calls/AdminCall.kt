@@ -7,6 +7,7 @@ import kotlinx.html.a
 import kotlinx.html.b
 import kotlinx.html.body
 import kotlinx.html.h2
+import org.kethereum.ETH_IN_WEI
 import org.kethereum.crypto.toAddress
 import org.komputing.fauceth.FaucethLogLevel
 import org.komputing.fauceth.chains
@@ -29,7 +30,12 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.adminCall() {
                 }
                 keyValueHTML("pending Nonce") { +chainInfo.pendingNonce.get().toString() }
                 keyValueHTML("confirmed Nonce") { +chainInfo.confirmedNonce.get().toString() }
-                keyValueHTML("Balance") { +chainInfo.lastSeenBalance.toString() }
+                chainInfo.lastSeenBalance?.let { lastSeenBalance ->
+                    keyValueHTML("Balance") {
+                        +((lastSeenBalance / ETH_IN_WEI).toString() + chainInfo.staticChainInfo.nativeCurrency.symbol + " = "
+                                + ((lastSeenBalance / config.amount).toString() + " servings"))
+                    }
+                }
                 chainInfo.staticChainInfo.explorers?.firstOrNull()?.let {
                     keyValueHTML("Explorer") {
                         a {
