@@ -52,6 +52,8 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.adminCall() {
                     }
 
                 }
+
+                keyValueHTML("Addresses in map") { +chainInfo.addressToTimeMap.keys.size.toString() }
             }
         }
     }

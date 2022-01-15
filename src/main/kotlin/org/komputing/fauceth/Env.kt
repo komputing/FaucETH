@@ -10,6 +10,7 @@ import okio.source
 import org.ethereum.lists.chains.model.Chain
 import org.kethereum.crypto.toAddress
 import org.kethereum.ens.ENS
+import org.kethereum.model.Address
 import org.kethereum.rpc.*
 import org.kethereum.rpc.min3.getMin3RPC
 import org.komputing.fauceth.FaucethLogLevel.*
@@ -20,6 +21,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.math.BigInteger
 import java.math.BigInteger.ONE
+import java.util.*
 import kotlin.system.exitProcess
 
 const val ADDRESS_KEY = "address"
@@ -67,7 +69,8 @@ class ExtendedChainInfo(
     var useEIP1559: Boolean = true, // be optimistic - fallback when no 1559
     var lastSeenBalance: BigInteger? = null,
     var lastRequested: Long? = null,
-    var lastConfirmation: Long? = null
+    var lastConfirmation: Long? = null,
+    val addressToTimeMap: MutableMap<Address, Long> = Collections.synchronizedMap(mutableMapOf())
 )
 
 val chains = unfilteredChains.filter { config.chains.contains(BigInteger.valueOf(it.chainId)) }.map {
