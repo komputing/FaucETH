@@ -1,10 +1,8 @@
 package org.komputing.fauceth.util
 
-import kotlinx.html.BODY
-import kotlinx.html.b
-import kotlinx.html.br
+import kotlinx.html.*
 
-internal fun BODY.keyValueHTML(key: String, f: BODY.() -> Unit) {
+internal fun HtmlBlockTag.keyValueHTML(key: String, f: HtmlBlockTag.() -> Unit) {
     b {
         +"$key: "
     }

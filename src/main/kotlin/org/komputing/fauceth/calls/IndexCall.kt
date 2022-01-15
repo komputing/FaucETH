@@ -5,6 +5,7 @@ import io.ktor.html.*
 import io.ktor.util.pipeline.*
 import kotlinx.html.*
 import org.komputing.fauceth.*
+import org.komputing.fauceth.util.getTitle
 
 internal suspend fun PipelineContext<Unit, ApplicationCall>.indexCall() {
     val address = call.request.queryParameters[ADDRESS_KEY]
@@ -12,11 +13,7 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.indexCall() {
     val requestedChain = call.request.queryParameters[CHAIN_KEY]?.toLongOrNull().let { chainId ->
         chains.firstOrNull { it.staticChainInfo.chainId == chainId }
     }
-    val title = config.appTitle
-        .replace("%CHAINNAME", requestedChain?.staticChainInfo?.name ?: "")
-        .replace("%CHAINTITLE", requestedChain?.staticChainInfo?.title ?: "")
-        .replace("%CHAINSHORTNAME", requestedChain?.staticChainInfo?.shortName ?: "")
-        .trim()
+    val title = getTitle(requestedChain)
     call.respondHtml {
         head {
             title { +title }
