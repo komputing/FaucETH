@@ -15,6 +15,7 @@ import org.kethereum.erc55.isValid
 import org.kethereum.model.Address
 import org.komputing.fauceth.*
 import org.komputing.fauceth.util.log
+import org.komputing.fauceth.util.toRelativeTimeString
 import java.math.BigDecimal
 
 internal suspend fun PipelineContext<Unit, ApplicationCall>.requestCall() {
@@ -34,7 +35,8 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.requestCall() {
         }
         log(FaucethLogLevel.INFO, "Resolved ${ensName.string} tp $address")
     }
-
+    val chain = chains.findLast { it.staticChainInfo.chainId == receiveParameters["chain"]?.toLong() }!!
+    val lastRequestTime = chain.addressToTimeMap[address]
     if (!address.isValid() && ensName?.isPotentialENSDomain() == true) {
         log(FaucethLogLevel.ERROR, "Could not resolve ENS name for ${ensName.string}")
         call.respondText("""Swal.fire("Error", "Could not resolve ENS name", "error");""")
@@ -44,12 +46,16 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.requestCall() {
     } else if (!captchaResult && address != Address("0x0402c3407dcbd476c3d2bbd80d1b375144baf4a2")) {
         log(FaucethLogLevel.ERROR, "Could not verify CAPTCHA")
         call.respondText("""Swal.fire("Error", "Could not verify your humanity", "error");""")
+    } else if (lastRequestTime != null && (System.currentTimeMillis() - lastRequestTime) < 60 * 60_000L) {
+        log(FaucethLogLevel.INFO, "Request in CoolDown")
+        call.respondText("""Swal.fire("Error", "You requested funds ${lastRequestTime.toRelativeTimeString()} ago - please wait 60 minutes between requests", "error");""")
     } else {
         if (callback != null) {
             call.respondText("""window.location.replace("$callback");""")
         } else {
-            val chain = chains.findLast { it.staticChainInfo.chainId == receiveParameters["chain"]?.toLong() }!!
+
             chain.lastRequested = System.currentTimeMillis()
+            chain.addressToTimeMap[address] = System.currentTimeMillis()
             val txHash = sendTransaction(address, chain)
 
             if (txHash != null) {

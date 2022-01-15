@@ -18,6 +18,7 @@ repositories {
 }
 
 application {
+    applicationDefaultJvmArgs = ["-Dio.ktor.development=false"]
     mainClass.set("org.komputing.fauceth.ApplicationKt")
 }
 

@@ -28,4 +28,9 @@ class TheRelativeTimeString {
     fun shouldDisplayHourAndSecond() {
         3601L.toTimeString() `should be equal to` "1h 1s"
     }
+
+    @Test
+    fun shouldDisplay0s() {
+        0L.toTimeString() `should be equal to` "0s"
+    }
 }
