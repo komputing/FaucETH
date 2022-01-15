@@ -70,7 +70,8 @@ class ExtendedChainInfo(
     var lastSeenBalance: BigInteger? = null,
     var lastRequested: Long? = null,
     var lastConfirmation: Long? = null,
-    val addressToTimeMap: MutableMap<Address, Long> = Collections.synchronizedMap(mutableMapOf())
+    val addressToTimeMap: MutableMap<Address, Long> = Collections.synchronizedMap(mutableMapOf()),
+    val errorSet: MutableSet<String> = mutableSetOf()
 )
 
 val chains = unfilteredChains.filter { config.chains.contains(BigInteger.valueOf(it.chainId)) }.map {
