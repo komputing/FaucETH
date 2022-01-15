@@ -13,6 +13,7 @@ import org.komputing.fauceth.chains
 import org.komputing.fauceth.config
 import org.komputing.fauceth.util.keyValueHTML
 import org.komputing.fauceth.util.log
+import org.komputing.fauceth.util.toRelativeTimeString
 
 internal suspend fun PipelineContext<Unit, ApplicationCall>.adminCall() {
     log(FaucethLogLevel.VERBOSE, "Serving /admin")
@@ -22,20 +23,28 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.adminCall() {
                 +"Address: "
             }
             +config.keyPair.toAddress().toString()
-            chains.forEach {
+            chains.forEach { chainInfo ->
                 h2 {
-                    +it.staticChainInfo.name
+                    +chainInfo.staticChainInfo.name
                 }
-                keyValueHTML("pending Nonce") { +it.pendingNonce.get().toString() }
-                keyValueHTML("confirmed Nonce") { +it.confirmedNonce.get().toString() }
-                keyValueHTML("Balance") { +it.lastSeenBalance.toString() }
-                it.staticChainInfo.explorers?.firstOrNull()?.let {
+                keyValueHTML("pending Nonce") { +chainInfo.pendingNonce.get().toString() }
+                keyValueHTML("confirmed Nonce") { +chainInfo.confirmedNonce.get().toString() }
+                keyValueHTML("Balance") { +chainInfo.lastSeenBalance.toString() }
+                chainInfo.staticChainInfo.explorers?.firstOrNull()?.let {
                     keyValueHTML("Explorer") {
                         a {
-                            href = it.url+ "/address/" + config.keyPair.toAddress().toString()
+                            href = it.url + "/address/" + config.keyPair.toAddress().toString()
                             +"link"
                         }
                     }
+                }
+                chainInfo.lastRequested?.let { lastRequested ->
+                    keyValueHTML("Last Request") { +lastRequested.toRelativeTimeString() }
+
+                    chainInfo.lastConfirmation?.let { lastConfirmed ->
+                        keyValueHTML("Last Confirm") { +lastConfirmed.toRelativeTimeString() }
+                    }
+
                 }
             }
         }

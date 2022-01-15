@@ -65,7 +65,9 @@ class ExtendedChainInfo(
     val confirmedNonce: AtomicNonce,
     val rpc: EthereumRPC,
     var useEIP1559: Boolean = true, // be optimistic - fallback when no 1559
-    var lastSeenBalance: BigInteger? = null
+    var lastSeenBalance: BigInteger? = null,
+    var lastRequested: Long? = null,
+    var lastConfirmation: Long? = null
 )
 
 val chains = unfilteredChains.filter { config.chains.contains(BigInteger.valueOf(it.chainId)) }.map {

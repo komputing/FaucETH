@@ -125,6 +125,7 @@ suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): Strin
                         txBlockNumber = txChain.rpc.getTransactionByHash(hash)?.transaction?.blockNumber
                         if (txBlockNumber != null) {
                             tx.nonce?.let { txChain.confirmedNonce.setPotentialNewMax(it) }
+                            txChain.lastConfirmation = System.currentTimeMillis()
                             return hash
                         }
                         delay(100)

@@ -49,6 +49,7 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.requestCall() {
             call.respondText("""window.location.replace("$callback");""")
         } else {
             val chain = chains.findLast { it.staticChainInfo.chainId == receiveParameters["chain"]?.toLong() }!!
+            chain.lastRequested = System.currentTimeMillis()
             val txHash = sendTransaction(address, chain)
 
             if (txHash != null) {
