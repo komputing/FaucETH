@@ -37,8 +37,8 @@ private val chainsDefinitionFile = File("chains.json").also {
     if (!it.exists()) {
         it.createNewFile()
 
-        val request = Request.Builder().url("https://chainid.network/chains_pretty.json").build();
-        val response = okHttpClient.newCall(request).execute();
+        val request = Request.Builder().url("https://chainid.network/chains_pretty.json").build()
+        val response = okHttpClient.newCall(request).execute()
         if (!response.isSuccessful) {
             fail("could not download chains.json")
         }
