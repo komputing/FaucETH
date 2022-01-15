@@ -52,6 +52,10 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.adminCall() {
                     }
 
                 }
+
+                chainInfo.errorSet.forEach {
+                    keyValueHTML("Error") { +it }
+                }
             }
         }
     }

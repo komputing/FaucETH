@@ -26,7 +26,12 @@ import java.math.BigDecimal
 import java.math.BigInteger
 import java.math.BigInteger.*
 
-suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): String? {
+sealed interface SendTransactionResult
+
+data class SendTransactionOk(val hash: String) : SendTransactionResult
+data class SendTransactionError(val message: String) : SendTransactionResult
+
+suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): SendTransactionResult {
 
     val txNonce = txChain.pendingNonce.getAndIncrement()
     val tx = createEmptyTransaction().apply {
@@ -44,19 +49,21 @@ suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): Strin
             val deltaToConfirmed = txNonce - txChain.confirmedNonce.get()
 
             if (deltaToConfirmed < BigInteger("7")) {
-                if (tryCreateAndSendTx(tx, txChain, txHashList)) return null
+                tryCreateAndSendTx(tx, txChain, txHashList)?.let {
+                    return it
+                }
             }
 
             if (deltaToConfirmed == ONE) {
                 tryConfirmTransaction(txHashList, txChain, tx)?.let {
-                    return it
+                    return SendTransactionOk(it)
                 }
             }
 
             delay(100)
         }
     } catch (rpce: EthereumRPCException) {
-        return null
+        return SendTransactionError(rpce.message)
     }
 }
 
@@ -64,7 +71,7 @@ private suspend fun tryCreateAndSendTx(
     tx: Transaction,
     txChain: ExtendedChainInfo,
     txHashList: MutableSet<String>
-): Boolean {
+): SendTransactionError? {
     tx.gasLimit = retry {
         // TODO usually with most chains it is fixed at 21k - so there is room for RPC call amount optimize here
         txChain.rpc.estimateGas(tx) ?: throw EthereumRPCException("Could not estimate gas limit", 404)
@@ -119,7 +126,7 @@ private suspend fun tryCreateAndSendTx(
     }
 
     if (txChain.lastSeenBalance!! < tx.value!!.multiply(TWO)) { // TODO improve threshold
-        return true
+        return SendTransactionError("Faucet is dry")
     }
 
     val encodedTransaction = tx.encode(signature)
@@ -140,14 +147,14 @@ private suspend fun tryCreateAndSendTx(
     } catch (e: EthereumRPCException) {
         // might be "Replacement tx too low", "already known" or "nonce too low" when previous tx was accepted
     }
-    return false
+    return null
 }
 
 private suspend fun tryConfirmTransaction(
     txHashList: MutableSet<String>,
     txChain: ExtendedChainInfo,
     tx: Transaction
-) : String? {
+): String? {
     repeat(20) { // after 20 attempts we will try with a new fee calculation
         txHashList.forEach { hash ->
             // we wait for *any* tx we signed in this context to confirm - there could be (edge)cases where a old tx confirms and so a replacement tx will not

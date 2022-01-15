@@ -50,20 +50,26 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.requestCall() {
         } else {
             val chain = chains.findLast { it.staticChainInfo.chainId == receiveParameters["chain"]?.toLong() }!!
             chain.lastRequested = System.currentTimeMillis()
-            val txHash = sendTransaction(address, chain)
+            val result: SendTransactionResult = sendTransaction(address, chain)
 
-            if (txHash != null) {
-                val amountString = BigDecimal(config.amount).divide(BigDecimal(ETH_IN_WEI))
-                val explorer = chain.staticChainInfo.explorers?.firstOrNull()?.url
-                val msg = if (explorer != null) {
-                    "send $amountString ETH (<a href='$explorer/tx/$txHash'>view here</a>)"
-                } else {
-                    "send $amountString ETH (transaction: $txHash)"
+            call.respondText(
+                when (result) {
+                    is SendTransactionOk -> {
+                        val amountString = BigDecimal(config.amount).divide(BigDecimal(ETH_IN_WEI))
+                        val explorer = chain.staticChainInfo.explorers?.firstOrNull()?.url
+                        val msg = if (explorer != null) {
+                            "send $amountString ETH (<a href='$explorer/tx/${result.hash}'>view here</a>)"
+                        } else {
+                            "send $amountString ETH (transaction: ${result.hash})"
+                        }
+                        """Swal.fire("Transaction send", "$msg", "success");"""
+                    }
+                    is SendTransactionError -> {
+                        chain.errorSet.add(result.message)
+                        """Swal.fire("Faucet dry", "Unfortunately we got an error: ${result.message}.", "error");"""
+                    }
                 }
-                call.respondText("""Swal.fire("Transaction send", "$msg", "success");""")
-            } else {
-                call.respondText("""Swal.fire("Faucet dry", "Unfortunately the faucet ran out of funds on this chain.", "error");""")
-            }
+            )
         }
     }
 }
