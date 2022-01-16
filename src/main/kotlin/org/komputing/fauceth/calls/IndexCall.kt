@@ -22,6 +22,9 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.indexCall() {
 
             script(src = "/static/js/main.js") {}
 
+            meta(name = "keywords") {
+                content = keywords
+            }
             styleLink("/static/css/main.css")
             styleLink("/static/css/gh-fork-ribbon.css")
 

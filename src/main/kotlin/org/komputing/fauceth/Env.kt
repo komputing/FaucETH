@@ -99,6 +99,15 @@ val chains = unfilteredChains.filter { config.chains.contains(BigInteger.valueOf
     )
 }
 
+val keywords = listOf(
+    listOf("fauceth","faucet"),
+    getChainsKeywords { it.staticChainInfo.name },
+    getChainsKeywords { it.staticChainInfo.shortName },
+    getChainsKeywords { it.staticChainInfo.title }
+).flatten().joinToString(",")
+
+private fun getChainsKeywords(function: (ExtendedChainInfo) -> String?) = chains.mapNotNull(function) + chains.mapNotNull(function).map { "$it faucet" }
+
 internal fun fail(msg: String): Nothing {
     println(msg)
     exitProcess(1)
