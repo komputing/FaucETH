@@ -118,7 +118,7 @@ private suspend fun tryCreateAndSendTx(
         txChain.rpc.getBalance(config.keyPair.toAddress()) ?: throw IOException("Could not get balance")
     }
 
-    if (txChain.lastSeenBalance!! < tx.value!!.multiply(TWO)) { // TODO improve threshold
+    if (txChain.lastSeenBalance!! < tx.value!!.shl(1)) { // TODO improve threshold
         return true
     }
 
