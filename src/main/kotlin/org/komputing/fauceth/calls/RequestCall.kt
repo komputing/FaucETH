@@ -22,7 +22,7 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.requestCall() {
     val receiveParameters = call.receiveParameters()
     log(FaucethLogLevel.VERBOSE, "Serving /request with parameters $receiveParameters")
 
-    val captchaResult: Boolean = receiveParameters["h-captcha-response"]?.let { captchaVerifier.verifyCaptcha(it) } ?: false
+    val captchaResult: Boolean = receiveParameters["h-captcha-response"]?.let { captchaVerifier?.verifyCaptcha(it) } ?: false
     var address = Address(receiveParameters[ADDRESS_KEY] ?: "")
     val callback = receiveParameters[CALLBACK_KEY]
     val ensName = receiveParameters[ADDRESS_KEY]?.let { name -> ENSName(name) }
@@ -43,7 +43,7 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.requestCall() {
     } else if (!address.isValid()) {
         log(FaucethLogLevel.ERROR, "Address invalid $address")
         call.respondText("""Swal.fire("Error", "Address invalid", "error");""")
-    } else if (!captchaResult && address != Address("0x0402c3407dcbd476c3d2bbd80d1b375144baf4a2")) {
+    } else if (captchaVerifier != null && !captchaResult && address != Address("0x0402c3407dcbd476c3d2bbd80d1b375144baf4a2")) {
         log(FaucethLogLevel.ERROR, "Could not verify CAPTCHA")
         call.respondText("""Swal.fire("Error", "Could not verify your humanity", "error");""")
     } else if (lastRequestTime != null && (System.currentTimeMillis() - lastRequestTime) < 60 * 60_000L) {
