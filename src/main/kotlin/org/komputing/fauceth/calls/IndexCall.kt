@@ -2,12 +2,17 @@ package org.komputing.fauceth.calls
 
 import io.ktor.application.*
 import io.ktor.html.*
+import io.ktor.response.*
 import io.ktor.util.pipeline.*
 import kotlinx.html.*
 import org.komputing.fauceth.*
 import org.komputing.fauceth.util.getTitle
 
 internal suspend fun PipelineContext<Unit, ApplicationCall>.indexCall() {
+    if (chains.isEmpty()) {
+        call.respondText("No chain configured")
+        return
+    }
     val address = call.request.queryParameters[ADDRESS_KEY]
     val callback = call.request.queryParameters[CALLBACK_KEY]
     val requestedChain = call.request.queryParameters[CHAIN_KEY]?.toLongOrNull().let { chainId ->
@@ -88,8 +93,10 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.indexCall() {
                             value = address ?: ""
                             placeholder = "Please enter some address or ENS name"
                         }
-                        div(classes = "h-captcha center") {
-                            attributes["data-sitekey"] = config.hcaptchaSiteKey
+                        config.hcaptchaSiteKey?.let { hcaptchaSiteKey ->
+                            div(classes = "h-captcha center") {
+                                attributes["data-sitekey"] = hcaptchaSiteKey
+                            }
                         }
                     }
                     div(classes = "center") {

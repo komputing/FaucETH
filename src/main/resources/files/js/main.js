@@ -12,7 +12,7 @@ async function submitForm() {
         allowOutsideClick: false
       });
 
-      hcaptcha.reset()
+      try { hcaptcha.reset() } catch(e) { if (e.cause != 'missing-captcha') throw e; }
 
       const response = await fetch('/request', {
              method: 'POST',

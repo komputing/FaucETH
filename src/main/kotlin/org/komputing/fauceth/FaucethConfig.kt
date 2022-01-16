@@ -40,10 +40,10 @@ class FaucethConfig {
         chainIdString.split(",").map { BigInteger(it) }
     } ?: emptyList()
 
-    val hcaptchaSecret = config[Key("hcaptcha.secret", stringType)]
-    val hcaptchaSiteKey = config[Key("hcaptcha.sitekey", stringType)]
+    val hcaptchaSecret = config.getOrNull(Key("hcaptcha.secret", stringType))
+    val hcaptchaSiteKey = config.getOrNull(Key("hcaptcha.sitekey", stringType))
 
-    val infuraProject = config[Key("infura.projectid", stringType)]
+    val infuraProject = config.getOrNull(Key("infura.projectid", stringType))
 
     val port = config.getOrElse(Key("app.port", intType), 8080)
 
