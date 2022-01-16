@@ -10,10 +10,18 @@ Then [a tweet of pari](https://twitter.com/parithosh_j/status/147188817336623514
 # What
 
 This faucet uses hCaptcha instead of reCaptcha to not feed the google.
+You can deeplink to a cain with the url parameter `chain` that contains a chain-id.
+And you can pass an address with a url parameter `address` that will then be pre-filled.
 
-# How
+# Run
 
-Either download the tar from the release then run:
+## via docker
+
+`docker run -p 8080:8080 ghcr.io/komputing/fauceth:release`
+
+## via distribution
+
+Either download the tar from the release then after untar run:
 
 `./bin/fauceth`
 
@@ -21,25 +29,23 @@ you can also build the tar via:
 
 `./gradlew distTar`
 
+## from source
+
 or directly run tha app from within the repo via:
 
 `./gradlew run`
 
-your working dir needs a file called `fauceth.properties` that looks like this:
+# Configure
 
-```properties
-hcaptcha.secret=your_hcaptcha_secret
-hcaptcha.sitekey=your_hcaptcha_site_key
+You can set properties of FaucETH via a file called `fauceth.properties`, via environment variables or system properties.
 
-app.chains=1337702,5
-```
-
-Make sure to replace the values with yours. You can also inject these properties via environment variables or system properties.
+You should set `app.chains` with a comma separated list of chain-ids and also `hcaptcha.secret` and `hcaptcha.sitekey` so you are protected by hcaptcha from faucet drainage.
 
 Optional properties you can set are `app.title`, `app.imageURL`, `app.amount`, `app.logging`, `app.port` or `app.ethkey`
 In `app.title` you can use `%CHAINNAME`, `%CHAINTITLE`, `%CHAINSHORTNAME` - this is especially useful if you support multiple chains.
+If your chains use infura RPCs please also set `infura.projectid`
 
-after you started the app you can see the address by accessing `locahost:8080/admin` - this way you can initially fund it.
+After you started the app you can see the address by accessing `locahost:8080/admin` - this way you can initially fund it.
 
 # Dream
 
