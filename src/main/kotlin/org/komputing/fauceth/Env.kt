@@ -102,6 +102,7 @@ val chains = unfilteredChains.filter { config.chains.contains(BigInteger.valueOf
 
 val keywords = listOf(
     listOf("fauceth","faucet"),
+    config.keywords,
     getChainsKeywords { it.staticChainInfo.name },
     getChainsKeywords { it.staticChainInfo.shortName },
     getChainsKeywords { it.staticChainInfo.title }
