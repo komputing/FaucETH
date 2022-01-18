@@ -45,6 +45,8 @@ class FaucethConfig {
 
     val infuraProject = config.getOrNull(Key("infura.projectid", stringType))
 
+    val keywords = config.getOrNull(Key("app.keywords", stringType))?.split(",") ?: emptyList()
+
     val port = config.getOrElse(Key("app.port", intType), 8080)
 
     val appTitle = config.getOrElse(Key("app.title", stringType), "FaucETH")
