@@ -5,7 +5,6 @@ import com.github.michaelbull.retry.policy.limitAttempts
 import com.github.michaelbull.retry.policy.plus
 import com.github.michaelbull.retry.retry
 import kotlinx.coroutines.delay
-import org.kethereum.crypto.toAddress
 import org.kethereum.eip155.signViaEIP155
 import org.kethereum.eip1559.detector.isEIP1559
 import org.kethereum.eip1559.signer.signViaEIP1559
@@ -38,7 +37,7 @@ suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): SendT
         to = address
         value = config.amount
         nonce = txNonce
-        from = config.keyPair.toAddress()
+        from = config.address
         chain = txChain.staticChainInfo.chainId.toBigInteger()
     }
 
@@ -122,7 +121,7 @@ private suspend fun tryCreateAndSendTx(
     val signature = if (tx.isEIP1559()) tx.signViaEIP1559(config.keyPair) else tx.signViaEIP155(config.keyPair, ChainId(tx.chain!!))
 
     txChain.lastSeenBalance = retry {
-        txChain.rpc.getBalance(config.keyPair.toAddress()) ?: throw IOException("Could not get balance")
+        txChain.rpc.getBalance(config.address) ?: throw IOException("Could not get balance")
     }
 
     if (txChain.lastSeenBalance!! < tx.value!!.shl(1)) { // TODO improve threshold

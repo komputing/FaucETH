@@ -11,7 +11,7 @@ Then [a tweet of pari](https://twitter.com/parithosh_j/status/147188817336623514
 
 This faucet uses hCaptcha instead of reCaptcha to not feed the google.
 You can deeplink to a cain with the url parameter `chain` that contains a chain-id.
-And you can pass an address with a url parameter `address` that will then be pre-filled.
+And you can pass an address with the url parameter `address` that will then be pre-filled.
 
 # Run
 
@@ -45,7 +45,8 @@ Optional properties you can set are `app.title`, `app.imageURL`, `app.amount`, `
 In `app.title` you can use `%CHAINNAME`, `%CHAINTITLE`, `%CHAINSHORTNAME` - this is especially useful if you support multiple chains.
 If your chains use infura RPCs please also set `infura.projectid`
 
-After you started the app you can see the address by accessing `locahost:8080/admin` - this way you can initially fund it.
+After you started the app you can see the address by accessing `locahost:8080/address` - this way you can initially fund it.
+There is a status dashboard on `locahost:8080/status`.
 
 # Dream
 

@@ -1,14 +1,13 @@
 package org.komputing.fauceth
 
 import com.natpryce.konfig.*
-import org.ethereum.lists.chains.model.Chain
 import org.kethereum.ETH_IN_WEI
 import org.kethereum.crypto.createEthereumKeyPair
+import org.kethereum.crypto.toAddress
 import org.kethereum.crypto.toECKeyPair
 import org.kethereum.model.ECKeyPair
 import org.kethereum.model.PrivateKey
 import java.io.File
-import java.io.IOException
 import java.lang.IllegalArgumentException
 import java.math.BigInteger
 import kotlin.system.exitProcess
@@ -35,6 +34,8 @@ class FaucethConfig {
     } else {
         PrivateKey(keystoreFile.readText().toBigInteger()).toECKeyPair()
     }
+
+    val address = keyPair.toAddress()
 
     val chains: List<BigInteger> = config.getOrNull(Key("app.chains", stringType))?.let { chainIdString ->
         chainIdString.split(",").map { BigInteger(it) }
