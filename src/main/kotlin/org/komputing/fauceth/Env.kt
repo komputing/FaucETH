@@ -31,7 +31,6 @@ const val CHAIN_KEY = "chain"
 
 val configPath = File("/config").takeIf { it.exists() } ?: File(".")
 
-val keystoreFile = File("fauceth_keystore.json")
 val ens = ENS(getMin3RPC())
 val config = FaucethConfig()
 val captchaVerifier = config.hcaptchaSecret?.let { HCaptcha(it) }
@@ -86,7 +85,7 @@ class ExtendedChainInfo(
 
 val chains = unfilteredChains.filter { config.chains.contains(BigInteger.valueOf(it.chainId)) }.map {
     val rpcURL = it.rpc.first().replace("\${INFURA_API_KEY}", config.infuraProject ?: "none")
-    println(rpcURL)
+
     val rpc = if (config.logging == VERBOSE) {
         BaseEthereumRPC(ConsoleLoggingTransportWrapper(HttpTransport(rpcURL)))
     } else {

@@ -1,0 +1,15 @@
+#hcaptcha.secret=YOUR_CAPTCHA_SECRET
+#hcaptcha.sitekey=YOUR_CAPTCHA_SITEKEY
+
+app.title=%CHAINNAME FaucETH
+app.imageURL=https://ligi.de/assets/img/fauceth_420.jpg
+app.amount=420000000000000000
+app.ethkey=YOUR_ETH_KEY
+
+app.logging=info
+app.port=8080
+app.keywords=ethereum,ethereum faucet,evm,eth
+
+#infura.projectid=YOUR_INFURA_PROJECT_ID
+
+app.chains=1337702

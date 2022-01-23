@@ -20,20 +20,22 @@ enum class FaucethLogLevel {
 }
 
 class FaucethConfig {
+
+    private val configFileName = "fauceth.properties"
+    private val configFile = File(configPath, configFileName).takeIf { it.exists() }
+        ?: File(configFileName).takeIf { it.exists() }
+        ?: File(configPath, configFileName).also {
+            it.createNewFile()
+            val key = createEthereumKeyPair()
+            it.writeText(File("$configFileName.example").readText().replace("YOUR_ETH_KEY", "0x" + key.privateKey.key.toString(16)))
+        }
+
     private val config = ConfigurationProperties.systemProperties() overriding
             EnvironmentVariables() overriding
-            ConfigurationProperties.fromOptionalFile(File("fauceth.properties")) overriding
-            ConfigurationProperties.fromOptionalFile(File(configPath, "fauceth.properties"))
+            ConfigurationProperties.fromFile(configFile)
 
-    val keyPair: ECKeyPair = config.getOrNull(Key("app.ethkey", stringType))?.let {
-        PrivateKey(it.toBigInteger(16)).toECKeyPair()
-    } ?: if (!keystoreFile.exists()) {
-        createEthereumKeyPair().also {
-            keystoreFile.createNewFile()
-            keystoreFile.writeText(it.privateKey.key.toString())
-        }
-    } else {
-        PrivateKey(keystoreFile.readText().toBigInteger()).toECKeyPair()
+    val keyPair: ECKeyPair = config[Key("app.ethkey", stringType)].let {
+        PrivateKey(it.removePrefix("0x").toBigInteger(16)).toECKeyPair()
     }
 
     val address = keyPair.toAddress()
