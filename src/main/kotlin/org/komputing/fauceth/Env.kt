@@ -29,6 +29,8 @@ const val ADDRESS_KEY = "address"
 const val CALLBACK_KEY = "callback"
 const val CHAIN_KEY = "chain"
 
+val configPath = File("/config").takeIf { it.exists() } ?: File(".")
+
 val keystoreFile = File("fauceth_keystore.json")
 val ens = ENS(getMin3RPC())
 val config = FaucethConfig()
@@ -36,7 +38,8 @@ val captchaVerifier = config.hcaptchaSecret?.let { HCaptcha(it) }
 
 val okHttpClient = OkHttpClient.Builder().build()
 
-private val chainsDefinitionFile = File("chains.json").also {
+
+private val chainsDefinitionFile = File(configPath, "chains.json").also {
     if (!it.exists()) {
         it.createNewFile()
 
@@ -82,7 +85,7 @@ class ExtendedChainInfo(
 )
 
 val chains = unfilteredChains.filter { config.chains.contains(BigInteger.valueOf(it.chainId)) }.map {
-    val rpcURL = it.rpc.first().replace("\${INFURA_API_KEY}", config.infuraProject?:"none")
+    val rpcURL = it.rpc.first().replace("\${INFURA_API_KEY}", config.infuraProject ?: "none")
     println(rpcURL)
     val rpc = if (config.logging == VERBOSE) {
         BaseEthereumRPC(ConsoleLoggingTransportWrapper(HttpTransport(rpcURL)))
@@ -108,7 +111,7 @@ val chains = unfilteredChains.filter { config.chains.contains(BigInteger.valueOf
 }
 
 val keywords = listOf(
-    listOf("fauceth","faucet"),
+    listOf("fauceth", "faucet"),
     config.keywords,
     getChainsKeywords { it.staticChainInfo.name },
     getChainsKeywords { it.staticChainInfo.shortName },

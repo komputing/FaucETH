@@ -22,7 +22,8 @@ enum class FaucethLogLevel {
 class FaucethConfig {
     private val config = ConfigurationProperties.systemProperties() overriding
             EnvironmentVariables() overriding
-            ConfigurationProperties.fromOptionalFile(File("fauceth.properties"))
+            ConfigurationProperties.fromOptionalFile(File("fauceth.properties")) overriding
+            ConfigurationProperties.fromOptionalFile(File(configPath, "fauceth.properties"))
 
     val keyPair: ECKeyPair = config.getOrNull(Key("app.ethkey", stringType))?.let {
         PrivateKey(it.toBigInteger(16)).toECKeyPair()
