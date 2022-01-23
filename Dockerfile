@@ -7,4 +7,5 @@ FROM openjdk:8-jre-slim
 EXPOSE 8080
 WORKDIR /app
 COPY --from=build /home/gradle/src/build/install/src/ /app/
+COPY --from=build /home/gradle/src/fauceth.properties.example /app/
 ENTRYPOINT ["/app/bin/src"]
