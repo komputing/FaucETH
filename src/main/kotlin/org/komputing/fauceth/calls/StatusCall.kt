@@ -56,7 +56,6 @@ private fun BODY.renderCard(chainInfo: ExtendedChainInfo) = div(classes = "card"
             href = "/?chain=" + chainInfo.staticChainInfo.chainId
             +"deep"
         }
-
     }
 
     chainInfo.lastRequested?.let { lastRequested ->
@@ -67,8 +66,14 @@ private fun BODY.renderCard(chainInfo: ExtendedChainInfo) = div(classes = "card"
         }
 
     }
-
-    keyValueHTML("Addresses in map") { +chainInfo.addressToTimeMap.keys.size.toString() }
+    if (chainInfo.addressMeta.isNotEmpty()) {
+        keyValueHTML("Addresses in map") {
+            a {
+                href = "/pool?chain=" + chainInfo.staticChainInfo.chainId
+                +chainInfo.addressMeta.keys.size.toString()
+            }
+        }
+    }
 
     chainInfo.errorSet.forEach {
         keyValueHTML("Error") { +it }

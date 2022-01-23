@@ -41,20 +41,21 @@ suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): SendT
         chain = txChain.staticChainInfo.chainId.toBigInteger()
     }
 
-    val txHashList = mutableSetOf<String>()
+    val metaData = AddressInfo(System.currentTimeMillis())
+    txChain.addressMeta[address] = metaData
 
     try {
         while (true) {
             val deltaToConfirmed = txNonce - txChain.confirmedNonce.get()
 
             if (deltaToConfirmed < BigInteger("7")) {
-                tryCreateAndSendTx(tx, txChain, txHashList)?.let {
+                tryCreateAndSendTx(tx, txChain, metaData)?.let {
                     return it
                 }
             }
 
             if (deltaToConfirmed == ONE) {
-                tryConfirmTransaction(txHashList, txChain, tx)?.let {
+                tryConfirmTransaction(metaData, txChain, tx)?.let {
                     return SendTransactionOk(it)
                 }
             }
@@ -69,7 +70,7 @@ suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): SendT
 private suspend fun tryCreateAndSendTx(
     tx: Transaction,
     txChain: ExtendedChainInfo,
-    txHashList: MutableSet<String>
+    meta: AddressInfo
 ): SendTransactionError? {
     tx.gasLimit = retry {
         // TODO usually with most chains it is fixed at 21k - so there is room for RPC call amount optimize here
@@ -130,7 +131,10 @@ private suspend fun tryCreateAndSendTx(
 
     val encodedTransaction = tx.encode(signature)
     val hash = encodedTransaction.keccak()
-    txHashList.add(hash.toHexString())
+
+    tx.txHash = hash.toHexString()
+    meta.pendingTxList.add(tx)
+
     try {
 
         retry(limitAttempts(5) + noRetryWhenKnown + decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
@@ -150,17 +154,19 @@ private suspend fun tryCreateAndSendTx(
 }
 
 private suspend fun tryConfirmTransaction(
-    txHashList: MutableSet<String>,
+    meta: AddressInfo,
     txChain: ExtendedChainInfo,
     tx: Transaction
 ): String? {
     repeat(20) { // after 20 attempts we will try with a new fee calculation
-        txHashList.forEach { hash ->
+        meta.pendingTxList.mapNotNull { it.txHash }.forEach { hash ->
             // we wait for *any* tx we signed in this context to confirm - there could be (edge)cases where a old tx confirms and so a replacement tx will not
             val txBlockNumber = txChain.rpc.getTransactionByHash(hash)?.transaction?.blockNumber
             if (txBlockNumber != null) {
                 tx.nonce?.let { txChain.confirmedNonce.setPotentialNewMax(it) }
                 txChain.lastConfirmation = System.currentTimeMillis()
+                meta.pendingTxList.clear()
+                meta.confirmedTx = tx
                 return hash
             }
             delay(100)

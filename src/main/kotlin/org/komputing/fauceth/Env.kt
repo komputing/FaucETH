@@ -11,6 +11,7 @@ import org.ethereum.lists.chains.model.Chain
 import org.kethereum.crypto.toAddress
 import org.kethereum.ens.ENS
 import org.kethereum.model.Address
+import org.kethereum.model.Transaction
 import org.kethereum.rpc.*
 import org.kethereum.rpc.min3.getMin3RPC
 import org.komputing.fauceth.FaucethLogLevel.*
@@ -61,6 +62,12 @@ var chainsAdapter: JsonAdapter<List<Chain>> = moshi.adapter(listMyData)
 
 val unfilteredChains = chainsAdapter.fromJson(chainsDefinitionFile.source().buffer()) ?: fail("Could not read chains.json")
 
+data class AddressInfo(
+    var requestedTime: Long,
+    val pendingTxList: MutableList<Transaction> = mutableListOf(),
+    var confirmedTx: Transaction? = null
+)
+
 class ExtendedChainInfo(
     val staticChainInfo: Chain,
     val pendingNonce: AtomicNonce,
@@ -70,7 +77,7 @@ class ExtendedChainInfo(
     var lastSeenBalance: BigInteger? = null,
     var lastRequested: Long? = null,
     var lastConfirmation: Long? = null,
-    val addressToTimeMap: MutableMap<Address, Long> = Collections.synchronizedMap(mutableMapOf()),
+    val addressMeta: MutableMap<Address, AddressInfo> = Collections.synchronizedMap(mutableMapOf()),
     val errorSet: MutableSet<String> = mutableSetOf()
 )
 
