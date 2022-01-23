@@ -8,7 +8,9 @@ import org.kethereum.model.Transaction
 import org.komputing.fauceth.ExtendedChainInfo
 import org.komputing.fauceth.FaucethLogLevel
 import org.komputing.fauceth.chains
+import org.komputing.fauceth.lastPoolClean
 import org.komputing.fauceth.util.getTitle
+import org.komputing.fauceth.util.keyValueHTML
 import org.komputing.fauceth.util.log
 import org.komputing.fauceth.util.toRelativeTimeString
 
@@ -22,7 +24,8 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.poolCall() {
             styleLink("/static/css/status.css")
         }
         body {
-            val filteredChains = if (chain==null) chains else chains.filter { it.staticChainInfo.chainId.toString() == chain }
+            keyValueHTML("last clean") { +lastPoolClean.toRelativeTimeString() }
+            val filteredChains = if (chain == null) chains else chains.filter { it.staticChainInfo.chainId.toString() == chain }
             filteredChains.forEach { chainInfo ->
                 if (chain == null) {
                     h1 {

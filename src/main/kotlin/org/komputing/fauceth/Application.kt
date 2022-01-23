@@ -17,6 +17,7 @@ fun main() {
 private fun startAddressCleanupRoutine() {
     CoroutineScope(Dispatchers.Default).launch {
         while (true) {
+            lastPoolClean = System.currentTimeMillis()
             val timeout = 2 * 60 * 60 * 1000
             chains.forEach {
                 it.addressMeta.forEach { pair ->
