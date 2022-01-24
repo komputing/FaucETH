@@ -60,6 +60,8 @@ private fun BODY.showTx(tx: Transaction, chainInfo: ExtendedChainInfo) {
     tx.gasPrice?.let { +"GasPrice:$it " }
     tx.maxFeePerGas?.let { +"MaxFeePerGas:$it " }
     tx.maxPriorityFeePerGas?.let { +"MaxPrio:$it " }
+    tx.nonce?.let { +"Nonce:$it " }
+    tx.creationEpochSecond?.let { +"T:${it.toRelativeTimeString()} " }
     tx.txHash?.let { hash ->
         a(href = chainInfo.staticChainInfo.explorers?.firstOrNull()?.url?.let { "$it/tx/$hash" }) {
             +hash
