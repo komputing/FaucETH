@@ -66,7 +66,7 @@ val unfilteredChains = chainsAdapter.fromJson(chainsDefinitionFile.source().buff
 
 data class AddressInfo(
     var requestedTime: Long,
-    val pendingTxList: MutableList<Transaction> = mutableListOf(),
+    val pendingTxList: MutableSet<Transaction> = mutableSetOf(),
     var confirmedTx: Transaction? = null
 )
 
