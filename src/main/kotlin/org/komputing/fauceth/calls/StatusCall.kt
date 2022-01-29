@@ -6,10 +6,7 @@ import io.ktor.util.pipeline.*
 import kotlinx.html.*
 import org.kethereum.ETH_IN_WEI
 import org.kethereum.crypto.toAddress
-import org.komputing.fauceth.ExtendedChainInfo
-import org.komputing.fauceth.FaucethLogLevel
-import org.komputing.fauceth.chains
-import org.komputing.fauceth.config
+import org.komputing.fauceth.*
 import org.komputing.fauceth.util.getTitle
 import org.komputing.fauceth.util.keyValueHTML
 import org.komputing.fauceth.util.log
@@ -19,7 +16,7 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.statusCall() {
     log(FaucethLogLevel.VERBOSE, "Serving /status")
     call.respondHtml {
         head {
-            title { +"${getTitle()} Status" }
+            title { +"${getTitle()} v$FaucethVersion Status" }
 
             styleLink("/static/css/status.css")
         }

@@ -10,7 +10,7 @@ plugins {
 }
 
 group 'org.komputing.fauceth'
-version '2.4'
+version file('src/main/resources/version.txt').text.trim()
 
 repositories {
     mavenCentral()

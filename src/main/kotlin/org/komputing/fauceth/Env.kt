@@ -126,3 +126,4 @@ internal fun fail(msg: String): Nothing {
 
 var lastPoolClean = System.currentTimeMillis()
 
+val FaucethVersion = {}.javaClass.getResource("/version.txt")!!.readText()
