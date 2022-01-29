@@ -49,13 +49,13 @@ suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): SendT
             val deltaToConfirmed = txNonce - txChain.confirmedNonce.get()
 
             if (deltaToConfirmed < BigInteger("7")) {
-                tryCreateAndSendTx(tx, txChain, metaData)?.let {
+                tryCreateAndSendTx(tx.copy(), txChain, metaData)?.let {
                     return it
                 }
             }
 
             if (deltaToConfirmed == ONE) {
-                tryConfirmTransaction(metaData, txChain, tx)?.let {
+                tryConfirmTransaction(metaData, txChain)?.let {
                     return SendTransactionOk(it)
                 }
             }
@@ -155,19 +155,20 @@ private suspend fun tryCreateAndSendTx(
 
 private suspend fun tryConfirmTransaction(
     meta: AddressInfo,
-    txChain: ExtendedChainInfo,
-    tx: Transaction
+    txChain: ExtendedChainInfo
 ): String? {
     repeat(20) { // after 20 attempts we will try with a new fee calculation
-        meta.pendingTxList.mapNotNull { it.txHash }.forEach { hash ->
+        meta.pendingTxList.forEach { tx ->
             // we wait for *any* tx we signed in this context to confirm - there could be (edge)cases where a old tx confirms and so a replacement tx will not
-            val txBlockNumber = txChain.rpc.getTransactionByHash(hash)?.transaction?.blockNumber
-            if (txBlockNumber != null) {
-                tx.nonce?.let { txChain.confirmedNonce.setPotentialNewMax(it) }
-                txChain.lastConfirmation = System.currentTimeMillis()
-                meta.pendingTxList.clear()
-                meta.confirmedTx = tx
-                return hash
+            tx.txHash?.let { txHash ->
+                val txBlockNumber = txChain.rpc.getTransactionByHash(txHash)?.transaction?.blockNumber
+                if (txBlockNumber != null) {
+                    tx.nonce?.let { txChain.confirmedNonce.setPotentialNewMax(it) }
+                    txChain.lastConfirmation = System.currentTimeMillis()
+                    meta.pendingTxList.clear()
+                    meta.confirmedTx = tx
+                    return txHash
+                }
             }
             delay(100)
         }
