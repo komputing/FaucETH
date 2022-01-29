@@ -19,12 +19,8 @@ private fun startAddressCleanupRoutine() {
         while (true) {
             lastPoolClean = System.currentTimeMillis()
             val timeout = 2 * 60 * 60 * 1000
-            chains.forEach {
-                it.addressMeta.forEach { pair ->
-                    if (System.currentTimeMillis() - pair.value.requestedTime > timeout) {
-                        it.addressMeta.remove(pair.key)
-                    }
-                }
+            chains.forEach { chainInfo ->
+                chainInfo.addressMeta.entries.removeIf { System.currentTimeMillis() - it.value.requestedTime > timeout }
             }
             delay(timeout.toLong())
         }
