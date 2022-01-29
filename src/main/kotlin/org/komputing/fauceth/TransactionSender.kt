@@ -33,7 +33,7 @@ data class SendTransactionError(val message: String) : SendTransactionResult
 suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): SendTransactionResult {
 
     val txNonce = txChain.pendingNonce.getAndIncrement()
-    val tx = createEmptyTransaction().apply {
+    var tx = createEmptyTransaction().apply {
         to = address
         value = config.amount
         nonce = txNonce
@@ -48,8 +48,9 @@ suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): SendT
         while (true) {
             val deltaToConfirmed = txNonce - txChain.confirmedNonce.get()
 
+            tx = tx.copy()
             if (deltaToConfirmed < BigInteger("7")) {
-                tryCreateAndSendTx(tx.copy(), txChain, metaData)?.let {
+                tryCreateAndSendTx(tx, txChain, metaData)?.let {
                     return it
                 }
             }
