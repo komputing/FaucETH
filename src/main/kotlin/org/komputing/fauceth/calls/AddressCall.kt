@@ -23,6 +23,7 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.addressCall() {
                 img {
                     src = createQR(url)
                 }
+                br
                 a(href = url) {
                     +config.address.toString()
                 }
