@@ -68,3 +68,24 @@ select {
   width: %;
   background: white;
 }
+
+footer {
+  position: absolute;
+  bottom: 0;
+  height: 42px;
+  left: 0px; right: 0px; bottom: 0px;
+  background: #333;
+  padding:0px;
+  font-size:15px;
+  color:#737373;
+}
+
+footer p {
+  text-align: center;
+  color:  #ffffff;
+}
+
+footer p a {
+  color:  lightseagreen;
+  text-decoration: none;
+}

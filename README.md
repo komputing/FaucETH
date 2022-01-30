@@ -41,7 +41,7 @@ You can set properties of FaucETH via a file called `fauceth.properties`, via en
 
 You should set `app.chains` with a comma separated list of chain-ids and also `hcaptcha.secret` and `hcaptcha.sitekey` so you are protected by hcaptcha from faucet drainage.
 
-Optional properties you can set are `app.title`, `app.imageURL`, `app.amount`, `app.logging`, `app.port`, `app.keywords` or `app.ethkey`
+Optional properties you can set are `app.title`, `app.imageURL`, `app.amount`, `app.logging`, `app.port`, `app.keywords`, `app.footer` or `app.ethkey`
 In `app.title` you can use `%CHAINNAME`, `%CHAINTITLE`, `%CHAINSHORTNAME` - this is especially useful if you support multiple chains.
 If your chains use infura RPCs please also set `infura.projectid`
 

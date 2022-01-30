@@ -109,6 +109,15 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.indexCall() {
                         }
                     }
                 }
+            } // container
+            if (config.footerHTML != null) {
+                footer(classes = "site-footer") {
+                    p {
+                        unsafe {
+                            +config.footerHTML
+                        }
+                    }
+                }
             }
         }
     }
