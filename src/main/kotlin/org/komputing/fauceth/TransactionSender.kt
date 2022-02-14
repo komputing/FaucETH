@@ -27,7 +27,7 @@ import java.math.BigInteger.*
 
 sealed interface SendTransactionResult
 
-data class SendTransactionOk(val hash: String) : SendTransactionResult
+data class SendTransactionOk(val hash: String?) : SendTransactionResult
 data class SendTransactionError(val message: String) : SendTransactionResult
 
 suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): SendTransactionResult {
@@ -57,7 +57,7 @@ suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): SendT
 
             if (deltaToConfirmed == ONE) {
                 tryConfirmTransaction(metaData, txChain)?.let {
-                    return SendTransactionOk(it)
+                    return it
                 }
             }
 
@@ -150,21 +150,25 @@ private suspend fun tryCreateAndSendTx(
 private suspend fun tryConfirmTransaction(
     meta: AddressInfo,
     txChain: ExtendedChainInfo
-): String? {
+): SendTransactionOk? {
     repeat(20) { // after 20 attempts we will try with a new fee calculation
-        meta.pendingTxList.forEach { tx ->
-            // we wait for *any* tx we signed in this context to confirm - there could be (edge)cases where a old tx confirms and so a replacement tx will not
-            tx.txHash?.let { txHash ->
-                val txBlockNumber = txChain.rpc.getTransactionByHash(txHash)?.transaction?.blockNumber
-                if (txBlockNumber != null) {
-                    tx.nonce?.let { txChain.confirmedNonce.setPotentialNewMax(it) }
-                    txChain.lastConfirmation = System.currentTimeMillis()
-                    meta.pendingTxList.clear()
-                    meta.confirmedTx = tx
-                    return txHash
+
+        if ((txChain.rpc.getTransactionCount(config.address) ?: ZERO) > (txChain.confirmedNonce.get() + ONE)) {
+
+            meta.pendingTxList.forEach { tx ->
+                // we wait for *any* tx we signed in this context to confirm - there could be (edge)cases where a old tx confirms and so a replacement tx will not
+                tx.txHash?.let { txHash ->
+                    val txBlockNumber = txChain.rpc.getTransactionByHash(txHash)?.transaction?.blockNumber
+                    if (txBlockNumber != null) {
+                        tx.nonce?.let { txChain.confirmedNonce.setPotentialNewMax(it) }
+                        txChain.lastConfirmation = System.currentTimeMillis()
+                        meta.pendingTxList.clear()
+                        meta.confirmedTx = tx
+                        return SendTransactionOk(txHash)
+                    }
                 }
             }
-            delay(100)
+            return SendTransactionOk(null)
         }
         delay(700)
     }
