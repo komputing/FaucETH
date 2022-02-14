@@ -19,10 +19,9 @@ import org.kethereum.rpc.EthereumRPCException
 import org.komputing.fauceth.util.handle1559NotAvailable
 import org.komputing.fauceth.util.isUnRecoverableEIP1559Error
 import org.komputing.fauceth.util.log
-import org.komputing.fauceth.util.noRetryWhenKnown
+import org.komputing.fauceth.util.noRetryWhenNotRecoverable
 import org.walleth.khex.toHexString
 import java.io.IOException
-import java.math.BigDecimal
 import java.math.BigInteger
 import java.math.BigInteger.*
 
@@ -93,19 +92,9 @@ private suspend fun tryCreateAndSendTx(
                 }?.let { feeSuggestionResult ->
                     tx.creationEpochSecond = System.currentTimeMillis()
 
-                    if (tx.maxPriorityFeePerGas == null) {
-                        // initial fee
+                    if (feeSuggestionResult.maxFeePerGas > (tx.maxFeePerGas ?: ZERO)) {
                         tx.maxPriorityFeePerGas = feeSuggestionResult.maxPriorityFeePerGas
                         tx.maxFeePerGas = feeSuggestionResult.maxFeePerGas
-                        log(FaucethLogLevel.INFO, "Signing Transaction $tx")
-                    } else {
-                        // replacement fee (e.g. there was a surge after we calculated the fee and tx is not going in this way
-                        tx.maxPriorityFeePerGas = feeSuggestionResult.maxPriorityFeePerGas.max(tx.maxPriorityFeePerGas!!)
-                        // either replace with new feeSuggestion or 20% more than previous to prevent replacement tx underpriced
-                        tx.maxFeePerGas =
-                            feeSuggestionResult.maxFeePerGas.max(tx.maxFeePerGas!!.toBigDecimal().multiply(BigDecimal("1.2")).toBigInteger())
-                        log(FaucethLogLevel.INFO, "Signing Transaction with replacement fee $tx")
-
                     }
                 }
             } catch (e: EthereumRPCException) {
@@ -120,7 +109,7 @@ private suspend fun tryCreateAndSendTx(
     if (!txChain.useEIP1559) {
         tx.gasPrice = retry(limitAttempts(5) + decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
             txChain.rpc.gasPrice()
-        }?.max(((tx.gasPrice ?: ONE).toBigDecimal() * BigDecimal("1.2")).toBigInteger())
+        }?.max(tx.gasPrice ?: ONE)
         log(FaucethLogLevel.INFO, "Signing Transaction $tx")
     }
     val signature = if (tx.isEIP1559()) tx.signViaEIP1559(config.keyPair) else tx.signViaEIP155(config.keyPair, ChainId(tx.chain!!))
@@ -137,17 +126,18 @@ private suspend fun tryCreateAndSendTx(
     val hash = encodedTransaction.keccak()
 
     tx.txHash = hash.toHexString()
-    meta.pendingTxList.add(tx)
 
     try {
 
-        retry(limitAttempts(5) + noRetryWhenKnown + decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
+        retry(limitAttempts(5) + noRetryWhenNotRecoverable + decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
             val res = txChain.rpc.sendRawTransaction(encodedTransaction.toHexString())
 
             if (res?.startsWith("0x") != true) {
                 log(FaucethLogLevel.ERROR, "sendRawTransaction got no hash $res")
                 throw EthereumRPCException("Got no hash from RPC for tx", 404)
             }
+
+            meta.pendingTxList.add(tx)
 
         }
 

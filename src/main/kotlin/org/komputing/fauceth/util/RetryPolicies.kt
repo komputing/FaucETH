@@ -9,6 +9,8 @@ val handle1559NotAvailable: RetryPolicy<Throwable> = {
     if (reason.isUnRecoverableEIP1559Error()) StopRetrying else ContinueRetrying
 }
 
-val noRetryWhenKnown: RetryPolicy<Throwable> = {
-    if (reason is EthereumRPCException && reason.message == "already known") StopRetrying else ContinueRetrying
+val noRetryWhenNotRecoverable: RetryPolicy<Throwable> = {
+    if ((reason as? EthereumRPCException)?.isKnownOrUnderpriced() == true) StopRetrying else ContinueRetrying
 }
+
+private fun EthereumRPCException.isKnownOrUnderpriced() = message == "already known" ||  message == "nonce too low" || message.contains("underpriced")
