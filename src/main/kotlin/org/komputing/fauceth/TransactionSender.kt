@@ -17,6 +17,7 @@ import org.kethereum.model.Transaction
 import org.kethereum.model.createEmptyTransaction
 import org.kethereum.rpc.EthereumRPCException
 import org.komputing.fauceth.util.handle1559NotAvailable
+import org.komputing.fauceth.util.isUnRecoverableEIP1559Error
 import org.komputing.fauceth.util.log
 import org.komputing.fauceth.util.noRetryWhenKnown
 import org.walleth.khex.toHexString
@@ -108,8 +109,10 @@ private suspend fun tryCreateAndSendTx(
                     }
                 }
             } catch (e: EthereumRPCException) {
-                log(FaucethLogLevel.INFO, "Chain does not seem to support 1559")
-                txChain.useEIP1559 = false
+                if (e.isUnRecoverableEIP1559Error()) {
+                    log(FaucethLogLevel.INFO, "Chain does not seem to support 1559")
+                    txChain.useEIP1559 = false
+                }
             }
         }
     }
