@@ -44,8 +44,9 @@ suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): SendT
     val metaData = AddressInfo(System.currentTimeMillis())
     txChain.addressMeta[address] = metaData
 
-    try {
-        while (true) {
+    while (true) {
+        try {
+
             val deltaToConfirmed = txNonce - txChain.confirmedNonce.get()
 
             tx = tx.copy()
@@ -61,11 +62,14 @@ suspend fun sendTransaction(address: Address, txChain: ExtendedChainInfo): SendT
                 }
             }
 
-            delay(100)
+        } catch (rpce: EthereumRPCException) {
+            if (rpce.message.contains("insufficient funds")) {
+                return SendTransactionError(rpce.message)
+            }
         }
-    } catch (rpce: EthereumRPCException) {
-        return SendTransactionError(rpce.message)
+        delay(100)
     }
+
 }
 
 private suspend fun tryCreateAndSendTx(
@@ -73,61 +77,60 @@ private suspend fun tryCreateAndSendTx(
     txChain: ExtendedChainInfo,
     meta: AddressInfo
 ): SendTransactionError? {
-    tx.gasLimit = retry {
-        // TODO usually with most chains it is fixed at 21k - so there is room for RPC call amount optimize here
-        txChain.rpc.estimateGas(tx) ?: throw EthereumRPCException("Could not estimate gas limit", 404)
-    }
-    if (txChain.useEIP1559) {
+    try {
+        tx.gasLimit = retry {
+            // TODO usually with most chains it is fixed at 21k - so there is room for RPC call amount optimize here
+            txChain.rpc.estimateGas(tx) ?: throw EthereumRPCException("Could not estimate gas limit", 404)
+        }
+        if (txChain.useEIP1559) {
 
-        if (tx.maxPriorityFeePerGas == null || System.currentTimeMillis() - (tx.creationEpochSecond ?: System.currentTimeMillis()) > 20000) {
-            try {
-                retry(handle1559NotAvailable + decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
+            if (tx.maxPriorityFeePerGas == null || System.currentTimeMillis() - (tx.creationEpochSecond ?: System.currentTimeMillis()) > 20000) {
+                try {
+                    retry(handle1559NotAvailable + decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
 
-                    val feeSuggestionResults = suggestEIP1559Fees(txChain.rpc)
-                    log(FaucethLogLevel.VERBOSE, "Got FeeSuggestionResults $feeSuggestionResults")
-                    (feeSuggestionResults.keys.minOrNull() ?: throw IllegalArgumentException("Could not get 1559 fees")).let {
-                        feeSuggestionResults[it]
+                        val feeSuggestionResults = suggestEIP1559Fees(txChain.rpc)
+                        log(FaucethLogLevel.VERBOSE, "Got FeeSuggestionResults $feeSuggestionResults")
+                        (feeSuggestionResults.keys.minOrNull() ?: throw IllegalArgumentException("Could not get 1559 fees")).let {
+                            feeSuggestionResults[it]
+                        }
+
+                    }?.let { feeSuggestionResult ->
+                        tx.creationEpochSecond = System.currentTimeMillis()
+
+                        if (feeSuggestionResult.maxFeePerGas > (tx.maxFeePerGas ?: ZERO)) {
+                            tx.maxPriorityFeePerGas = feeSuggestionResult.maxPriorityFeePerGas
+                            tx.maxFeePerGas = feeSuggestionResult.maxFeePerGas
+                        }
                     }
-
-                }?.let { feeSuggestionResult ->
-                    tx.creationEpochSecond = System.currentTimeMillis()
-
-                    if (feeSuggestionResult.maxFeePerGas > (tx.maxFeePerGas ?: ZERO)) {
-                        tx.maxPriorityFeePerGas = feeSuggestionResult.maxPriorityFeePerGas
-                        tx.maxFeePerGas = feeSuggestionResult.maxFeePerGas
+                } catch (e: EthereumRPCException) {
+                    if (e.isUnRecoverableEIP1559Error()) {
+                        log(FaucethLogLevel.INFO, "Chain does not seem to support 1559")
+                        txChain.useEIP1559 = false
                     }
-                }
-            } catch (e: EthereumRPCException) {
-                if (e.isUnRecoverableEIP1559Error()) {
-                    log(FaucethLogLevel.INFO, "Chain does not seem to support 1559")
-                    txChain.useEIP1559 = false
                 }
             }
         }
-    }
 
-    if (!txChain.useEIP1559) {
-        tx.gasPrice = retry(limitAttempts(5) + decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
-            txChain.rpc.gasPrice()
-        }?.max(tx.gasPrice ?: ONE)
-        log(FaucethLogLevel.INFO, "Signing Transaction $tx")
-    }
-    val signature = if (tx.isEIP1559()) tx.signViaEIP1559(config.keyPair) else tx.signViaEIP155(config.keyPair, ChainId(tx.chain!!))
+        if (!txChain.useEIP1559) {
+            tx.gasPrice = retry(limitAttempts(5) + decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
+                txChain.rpc.gasPrice()
+            }?.max(tx.gasPrice ?: ONE)
+            log(FaucethLogLevel.INFO, "Signing Transaction $tx")
+        }
+        val signature = if (tx.isEIP1559()) tx.signViaEIP1559(config.keyPair) else tx.signViaEIP155(config.keyPair, ChainId(tx.chain!!))
 
-    txChain.lastSeenBalance = retry {
-        txChain.rpc.getBalance(config.address) ?: throw IOException("Could not get balance")
-    }
+        txChain.lastSeenBalance = retry {
+            txChain.rpc.getBalance(config.address) ?: throw IOException("Could not get balance")
+        }
 
-    if (txChain.lastSeenBalance!! < tx.value!!.shl(1)) { // TODO improve threshold
-        return SendTransactionError("Faucet is dry")
-    }
+        if (txChain.lastSeenBalance!! < tx.value!!.shl(1)) { // TODO improve threshold
+            return SendTransactionError("Faucet is dry")
+        }
 
-    val encodedTransaction = tx.encode(signature)
-    val hash = encodedTransaction.keccak()
+        val encodedTransaction = tx.encode(signature)
+        val hash = encodedTransaction.keccak()
 
-    tx.txHash = hash.toHexString()
-
-    try {
+        tx.txHash = hash.toHexString()
 
         retry(limitAttempts(5) + noRetryWhenNotRecoverable + decorrelatedJitterBackoff(base = 10L, max = 5000L)) {
             val res = txChain.rpc.sendRawTransaction(encodedTransaction.toHexString())
@@ -153,7 +156,8 @@ private suspend fun tryConfirmTransaction(
 ): SendTransactionOk? {
     repeat(20) { // after 20 attempts we will try with a new fee calculation
 
-        if ((txChain.rpc.getTransactionCount(config.address) ?: ZERO) > (txChain.confirmedNonce.get() + ONE)) {
+        val isTransactionConfirmed = (txChain.rpc.getTransactionCount(config.address) ?: ZERO) > (txChain.confirmedNonce.get() + ONE)
+        if (meta.pendingTxList.isNotEmpty() && isTransactionConfirmed) {
 
             meta.pendingTxList.forEach { tx ->
                 // we wait for *any* tx we signed in this context to confirm - there could be (edge)cases where a old tx confirms and so a replacement tx will not
