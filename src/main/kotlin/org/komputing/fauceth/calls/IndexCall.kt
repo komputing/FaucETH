@@ -12,8 +12,9 @@ import org.komputing.fauceth.util.log
 internal suspend fun PipelineContext<Unit, ApplicationCall>.indexCall() {
     log(FaucethLogLevel.VERBOSE, "Serving /")
     if (chains.isEmpty()) {
-        call.respondText("No chain configured")
-        log(FaucethLogLevel.ERROR, "no chain configured")
+        val message = if (config.chains.isEmpty()) "No chain configured" else "loading chains"
+        call.respondText(message)
+        log(FaucethLogLevel.ERROR, message)
         return
     }
     val address = call.request.queryParameters[ADDRESS_KEY]

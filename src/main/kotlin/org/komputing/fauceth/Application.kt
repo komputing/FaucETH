@@ -5,13 +5,14 @@ import io.ktor.server.netty.*
 import kotlinx.coroutines.*
 
 fun main() {
-    if (config.chains.size != chains.size) fail("Could not find definitions for all chains")
+    runBlocking {
+        loadChains()
+        startAddressCleanupRoutine()
 
-    startAddressCleanupRoutine()
-
-    embeddedServer(Netty, port = config.port, host = "0.0.0.0") {
-        configureRouting()
-    }.start(wait = true)
+        embeddedServer(Netty, port = config.port, host = "0.0.0.0") {
+            configureRouting()
+        }.start(wait = true)
+    }
 }
 
 private fun startAddressCleanupRoutine() {

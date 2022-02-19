@@ -8,21 +8,18 @@ import okhttp3.Request
 import okio.buffer
 import okio.source
 import org.ethereum.lists.chains.model.Chain
-import org.kethereum.crypto.toAddress
 import org.kethereum.ens.ENS
 import org.kethereum.model.Address
 import org.kethereum.model.Transaction
 import org.kethereum.rpc.*
 import org.kethereum.rpc.min3.getMin3RPC
-import org.komputing.fauceth.FaucethLogLevel.*
 import org.komputing.fauceth.util.AtomicNonce
-import org.komputing.fauceth.util.log
 import org.komputing.kaptcha.HCaptcha
 import java.io.File
 import java.io.FileOutputStream
 import java.math.BigInteger
-import java.math.BigInteger.ONE
 import java.util.*
+import java.util.concurrent.CopyOnWriteArraySet
 import kotlin.system.exitProcess
 
 const val ADDRESS_KEY = "address"
@@ -83,36 +80,9 @@ class ExtendedChainInfo(
     val errorSet: MutableSet<String> = mutableSetOf()
 )
 
-val chains = unfilteredChains.filter { config.chains.contains(BigInteger.valueOf(it.chainId)) }.map {
-    val rpcURL = it.rpc.first().replace("\${INFURA_API_KEY}", config.infuraProject ?: "none")
+val chains: MutableSet<ExtendedChainInfo> = CopyOnWriteArraySet()
 
-    val rpc = if (config.logging == VERBOSE) {
-        BaseEthereumRPC(ConsoleLoggingTransportWrapper(HttpTransport(rpcURL)))
-    } else {
-        HttpEthereumRPC(rpcURL)
-    }
 
-    var initialNonce: BigInteger? = null
-
-    while (initialNonce == null) {
-        log(INFO, "Fetching initial nonce for chain ${it.name}")
-        try {
-            initialNonce = rpc.getTransactionCount(config.keyPair.toAddress())
-        } catch (e: EthereumRPCException) {
-            log(ERROR, "could not get initial nonce due to " + e.message)
-            Thread.sleep(1000)
-        }
-    }
-
-    log(INFO, "Got initial nonce for chain ${it.name}: $initialNonce for address ${config.keyPair.toAddress()}")
-
-    ExtendedChainInfo(
-        it,
-        confirmedNonce = AtomicNonce(initialNonce.minus(ONE)),
-        pendingNonce = AtomicNonce(initialNonce),
-        rpc = rpc
-    )
-}
 
 val keywords = listOf(
     listOf("fauceth", "faucet"),
