@@ -154,21 +154,26 @@ private suspend fun tryConfirmTransaction(
     repeat(20) { // after 20 attempts we will try with a new fee calculation
 
         val isTransactionConfirmed = (txChain.rpc.getTransactionCount(config.address) ?: ZERO) > (txChain.confirmedNonce.get() + ONE)
-        if (meta.pendingTxList.isNotEmpty() && isTransactionConfirmed) {
+        if (isTransactionConfirmed) {
+            txChain.confirmedNonce.setPotentialNewMax(txChain.confirmedNonce.get() + ONE)
+            txChain.lastConfirmation = System.currentTimeMillis()
 
-            meta.pendingTxList.forEach { tx ->
-                // we wait for *any* tx we signed in this context to confirm - there could be (edge)cases where a old tx confirms and so a replacement tx will not
-                tx.txHash?.let { txHash ->
-                    val txBlockNumber = txChain.rpc.getTransactionByHash(txHash)?.transaction?.blockNumber
-                    if (txBlockNumber != null) {
-                        tx.nonce?.let { txChain.confirmedNonce.setPotentialNewMax(it) }
-                        txChain.lastConfirmation = System.currentTimeMillis()
-                        meta.pendingTxList.clear()
-                        meta.confirmedTx = tx
-                        return SendTransactionOk(txHash)
+              repeat(20) {
+                meta.pendingTxList.forEach { tx ->
+                    // we wait for *any* tx we signed in this context to confirm - there could be (edge)cases where a old tx confirms and so a replacement tx will not
+                    tx.txHash?.let { txHash ->
+                        val txBlockNumber = txChain.rpc.getTransactionByHash(txHash)?.transaction?.blockNumber
+                        if (txBlockNumber != null) {
+
+                            meta.pendingTxList.clear()
+                            meta.confirmedTx = tx
+                            return SendTransactionOk(txHash)
+                        }
                     }
                 }
+                delay(400)
             }
+
             return SendTransactionOk(null)
         }
         delay(700)
