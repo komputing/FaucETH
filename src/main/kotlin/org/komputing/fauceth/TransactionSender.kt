@@ -78,9 +78,10 @@ private suspend fun tryCreateAndSendTx(
     meta: AddressInfo
 ): SendTransactionError? {
     try {
-        tx.gasLimit = retry {
-            // TODO usually with most chains it is fixed at 21k - so there is room for RPC call amount optimize here
-            txChain.rpc.estimateGas(tx) ?: throw EthereumRPCException("Could not estimate gas limit", 404)
+        if (tx.gasLimit != BigInteger("21000")) { // most chains are fixed at 21k - only estimate once here
+            tx.gasLimit = retry {
+                txChain.rpc.estimateGas(tx) ?: throw EthereumRPCException("Could not estimate gas limit", 404)
+            }
         }
         if (txChain.useEIP1559) {
 
