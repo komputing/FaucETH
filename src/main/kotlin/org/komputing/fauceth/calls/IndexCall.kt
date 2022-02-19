@@ -17,12 +17,14 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.indexCall() {
         log(FaucethLogLevel.ERROR, message)
         return
     }
-    val address = call.request.queryParameters[ADDRESS_KEY]
+
+    val params = ReceiveParametersProcessor(call.request.queryParameters)
+
     val callback = call.request.queryParameters[CALLBACK_KEY]
-    val requestedChain = call.request.queryParameters[CHAIN_KEY]?.toLongOrNull().let { chainId ->
-        chains.firstOrNull { it.staticChainInfo.chainId == chainId }
-    }
+    val requestedChain = params.chain ?: if (chains.size == 1) chains.first() else null
     val title = getTitle(requestedChain)
+    val multipleChainsPossible = chains.size > 1 && requestedChain == null
+
     call.respondHtml {
         head {
             title { +title }
@@ -74,7 +76,8 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.indexCall() {
                                 value = notNullCallback
                             }
                         }
-                        if (chains.size > 1 && requestedChain == null) {
+
+                        if (multipleChainsPossible && params.addressString.isNotEmpty()) {
                             select {
                                 name = "chain"
                                 chains.forEach { chain ->
@@ -85,27 +88,39 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.indexCall() {
                                 }
                             }
                         } else {
-                            hiddenInput {
-                                name = "chain"
-                                value = (requestedChain ?: chains.first()).staticChainInfo.chainId.toString()
+                            requestedChain?.let {
+                                hiddenInput {
+                                    name = CHAIN_KEY
+                                    value = it.staticChainInfo.chainId.toString()
+                                }
                             }
                         }
 
                         br
-                        input(classes = "input") {
-                            name = ADDRESS_KEY
-                            value = address ?: ""
-                            placeholder = "Please enter some address or ENS name"
+
+                        if (params.addressString.isEmpty()) {
+                            input(classes = "input") {
+                                name = ADDRESS_KEY
+                                value = ""
+                                placeholder = "Please enter some address or ENS name"
+                            }
+                        } else {
+                            hiddenInput {
+                                name = ADDRESS_KEY
+                                value = params.addressString
+                            }
                         }
-                        config.hcaptchaSiteKey?.let { hcaptchaSiteKey ->
-                            div(classes = "h-captcha center") {
-                                attributes["data-sitekey"] = hcaptchaSiteKey
+                        if (!multipleChainsPossible || params.addressString.isNotEmpty()) {
+                            config.hcaptchaSiteKey?.let { hcaptchaSiteKey ->
+                                div(classes = "h-captcha center") {
+                                    attributes["data-sitekey"] = hcaptchaSiteKey
+                                }
                             }
                         }
                     }
                     div(classes = "center") {
                         button(classes = "button") {
-                            onClick = "submitForm()"
+                            onClick = if (!multipleChainsPossible || params.addressString.isNotEmpty()) "submitFinalForm()" else "submitAddressForm()"
                             +"Request funds"
                         }
                     }

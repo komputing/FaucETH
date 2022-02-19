@@ -1,4 +1,18 @@
-async function submitForm() {
+async function submitAddressForm() {
+
+      const mainForm = document.getElementById('mainForm');
+      const formData = new FormData(mainForm);
+
+      var newLocation = "/?address=" + formData.get("address")
+
+      if (formData.get("chain") != null) {
+         newLocation = newLocation + "&" + formData.get("chain")
+      }
+
+      window.location = newLocation
+}
+
+async function submitFinalForm() {
       const mainForm = document.getElementById('mainForm');
       const formData = new FormData(mainForm);
 
