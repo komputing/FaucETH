@@ -18,6 +18,7 @@ import org.komputing.kaptcha.HCaptcha
 import java.io.File
 import java.io.FileOutputStream
 import java.math.BigInteger
+import java.math.BigInteger.ZERO
 import java.util.*
 import java.util.concurrent.CopyOnWriteArraySet
 import kotlin.system.exitProcess
@@ -66,6 +67,8 @@ data class AddressInfo(
     val pendingTxList: MutableSet<Transaction> = mutableSetOf(),
     var confirmedTx: Transaction? = null
 )
+
+fun ExtendedChainInfo.lowBalance() =  (lastSeenBalance ?: ZERO) < config.lowBalanceThreshold
 
 class ExtendedChainInfo(
     val staticChainInfo: Chain,

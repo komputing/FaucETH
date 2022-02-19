@@ -80,6 +80,10 @@ footer {
   color:#737373;
 }
 
+.warn {
+  color: #ff0000;
+}
+
 footer p {
   text-align: center;
   color:  #ffffff;
