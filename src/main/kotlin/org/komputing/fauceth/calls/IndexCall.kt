@@ -5,6 +5,7 @@ import io.ktor.html.*
 import io.ktor.response.*
 import io.ktor.util.pipeline.*
 import kotlinx.html.*
+import org.kethereum.ens.isPotentialENSDomain
 import org.komputing.fauceth.*
 import org.komputing.fauceth.util.getTitle
 import org.komputing.fauceth.util.log
@@ -24,6 +25,8 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.indexCall() {
     val requestedChain = params.chain ?: if (chains.size == 1) chains.first() else null
     val title = getTitle(requestedChain)
     val multipleChainsPossible = chains.size > 1 && requestedChain == null
+
+    val allDisabled = chains.all { it.lowBalance() } && !params.ensName.isPotentialENSDomain()
 
     call.respondHtml {
         head {
@@ -76,14 +79,24 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.indexCall() {
                                 value = notNullCallback
                             }
                         }
-
+                        if (allDisabled) {
+                            p(classes = "warn") {
+                                +(config.lowBalanceText)
+                            }
+                        }
                         if (multipleChainsPossible && params.addressString.isNotEmpty()) {
-                            select {
-                                name = "chain"
-                                chains.forEach { chain ->
-                                    option {
-                                        value = chain.staticChainInfo.chainId.toString()
-                                        +chain.staticChainInfo.name
+
+                            if (!allDisabled) {
+                                select {
+                                    name = "chain"
+
+                                    chains.forEach { chain ->
+                                        val disable = chain.lowBalance() && !params.ensName.isPotentialENSDomain()
+                                        option {
+                                            value = chain.staticChainInfo.chainId.toString()
+                                            disabled = disable
+                                            +(chain.staticChainInfo.name + if (disable) " - only for ENS domains" else "")
+                                        }
                                     }
                                 }
                             }
@@ -102,7 +115,7 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.indexCall() {
                             input(classes = "input") {
                                 name = ADDRESS_KEY
                                 value = ""
-                                placeholder = "Please enter some address or ENS name"
+                                placeholder = if (allDisabled) "Please enter some ENS name" else "Please enter address or ENS name"
                             }
                         } else {
                             hiddenInput {
@@ -110,7 +123,7 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.indexCall() {
                                 value = params.addressString
                             }
                         }
-                        if (!multipleChainsPossible || params.addressString.isNotEmpty()) {
+                        if (!multipleChainsPossible || params.addressString.isNotEmpty() && !allDisabled) {
                             config.hcaptchaSiteKey?.let { hcaptchaSiteKey ->
                                 div(classes = "h-captcha center") {
                                     attributes["data-sitekey"] = hcaptchaSiteKey
@@ -118,10 +131,12 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.indexCall() {
                             }
                         }
                     }
-                    div(classes = "center") {
-                        button(classes = "button") {
-                            onClick = if (!multipleChainsPossible || params.addressString.isNotEmpty()) "submitFinalForm()" else "submitAddressForm()"
-                            +"Request funds"
+                    if (!allDisabled || params.addressString.isEmpty()) {
+                        div(classes = "center") {
+                            button(classes = "button") {
+                                onClick = if (!multipleChainsPossible || params.addressString.isNotEmpty()) "submitFinalForm()" else "submitAddressForm()"
+                                +"Request funds"
+                            }
                         }
                     }
                 }

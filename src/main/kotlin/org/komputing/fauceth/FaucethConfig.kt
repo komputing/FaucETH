@@ -56,6 +56,9 @@ class FaucethConfig {
     val appHeroImage = config.getOrNull(Key("app.imageURL", stringType))
     val amount = BigInteger(config.getOrNull(Key("app.amount", stringType)) ?: "$ETH_IN_WEI")
 
+    val lowBalanceThreshold = BigInteger(config.getOrNull(Key("app.lowbalance.threshold", stringType)) ?: ("10000" +"0".repeat(18)))
+    val lowBalanceText = config.getOrNull(Key("app.lowbalance.text", stringType)) ?: "Low supply -> currently only available for ENS domains."
+
     val logging = try {
         config.getOrNull(Key("app.logging", stringType))?.let {
             FaucethLogLevel.valueOf(it.uppercase())

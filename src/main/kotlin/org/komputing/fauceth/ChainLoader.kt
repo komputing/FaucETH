@@ -1,5 +1,6 @@
 package org.komputing.fauceth
 
+import com.github.michaelbull.retry.retry
 import kotlinx.coroutines.*
 import org.kethereum.crypto.toAddress
 import org.kethereum.rpc.*
@@ -37,7 +38,12 @@ fun CoroutineScope.loadChains() {
                     it,
                     confirmedNonce = AtomicNonce(initialNonce.minus(BigInteger.ONE)),
                     pendingNonce = AtomicNonce(initialNonce),
-                    rpc = rpc
+                    rpc = rpc,
+                    lastSeenBalance = try {
+                        retry {
+                            rpc.getBalance(config.address)
+                        }
+                    } catch (e: Exception) { null } // we will get the balance later
                 )
             )
         }

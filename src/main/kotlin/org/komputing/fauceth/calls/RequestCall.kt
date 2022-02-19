@@ -42,6 +42,9 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.requestCall() {
     } else if (!params.address.isValid() && params.ensName.isPotentialENSDomain()) {
         log(FaucethLogLevel.ERROR, "Could not resolve ENS name for ${params.ensName.string}")
         call.respondText("""Swal.fire("Error", "Could not resolve ENS name", "error");""")
+    } else if (params.chain.lowBalance() && !params.ensName.isPotentialENSDomain()) {
+        log(FaucethLogLevel.INFO, "Low balance request")
+        call.respondText("""Swal.fire("Error", "${config.lowBalanceText}", "error");""")
     } else if (!params.address.isValid()) {
         log(FaucethLogLevel.ERROR, "Address invalid ${params.address}")
         call.respondText("""Swal.fire("Error", "Address invalid", "error");""")
