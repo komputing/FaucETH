@@ -96,7 +96,12 @@ val chains = unfilteredChains.filter { config.chains.contains(BigInteger.valueOf
 
     while (initialNonce == null) {
         log(INFO, "Fetching initial nonce for chain ${it.name}")
-        initialNonce = rpc.getTransactionCount(config.keyPair.toAddress())
+        try {
+            initialNonce = rpc.getTransactionCount(config.keyPair.toAddress())
+        } catch (e: EthereumRPCException) {
+            log(ERROR, "could not get initial nonce due to " + e.message)
+            Thread.sleep(1000)
+        }
     }
 
     log(INFO, "Got initial nonce for chain ${it.name}: $initialNonce for address ${config.keyPair.toAddress()}")
