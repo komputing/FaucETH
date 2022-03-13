@@ -67,7 +67,7 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.requestCall() {
                     is SendTransactionOk -> {
                         val amountString = BigDecimal(config.amount).divide(BigDecimal(ETH_IN_WEI))
                         val explorer = params.chain.staticChainInfo.explorers?.firstOrNull()?.url
-                        val msg = "send $amountString ETH" + if (explorer != null && result.hash != null) {
+                        val msg = "sent $amountString ETH" + if (explorer != null && result.hash != null) {
                             " (<a href='$explorer/tx/${result.hash}'>view here</a>)"
                         } else if (result.hash != null) {
                             " (transaction: ${result.hash})"
@@ -75,7 +75,7 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.requestCall() {
                             ""
                         }
 
-                        """Swal.fire("Transaction send", "$msg", "success");"""
+                        """Swal.fire("Transaction sent", "$msg", "success");"""
                     }
                     is SendTransactionError -> {
                         params.chain.errorSet.add(result.message)
