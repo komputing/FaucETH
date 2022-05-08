@@ -122,6 +122,7 @@ private suspend fun tryCreateAndSendTx(
         }
 
         if (txChain.lastSeenBalance!! < tx.value!!.shl(1)) { // TODO improve threshold
+            meta.requestedTime = 0
             return SendTransactionError("Faucet is dry")
         }
 
