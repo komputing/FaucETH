@@ -57,7 +57,7 @@ dependencies {
     implementation "com.natpryce:konfig:1.6.10.0"
     implementation "com.github.walleth:khex:0.6"
 
-    testImplementation 'org.amshove.kluent:kluent:1.68'
+    testImplementation 'org.amshove.kluent:kluent:1.69'
     testImplementation "org.jetbrains.kotlin:kotlin-test:${kotlin_version}"
     testImplementation "org.jetbrains.kotlin:kotlin-test-junit:${kotlin_version}"
 
