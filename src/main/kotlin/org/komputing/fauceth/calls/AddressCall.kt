@@ -1,7 +1,7 @@
 package org.komputing.fauceth.calls
 
-import io.ktor.application.*
-import io.ktor.html.*
+import io.ktor.server.application.*
+import io.ktor.server.html.*
 import io.ktor.util.pipeline.*
 import kotlinx.html.*
 import org.komputing.fauceth.FaucethLogLevel
