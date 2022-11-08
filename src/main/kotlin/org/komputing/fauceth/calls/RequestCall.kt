@@ -4,9 +4,9 @@ import com.github.michaelbull.retry.policy.decorrelatedJitterBackoff
 import com.github.michaelbull.retry.policy.limitAttempts
 import com.github.michaelbull.retry.policy.plus
 import com.github.michaelbull.retry.retry
-import io.ktor.application.*
-import io.ktor.request.*
-import io.ktor.response.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
 import io.ktor.util.pipeline.*
 import org.kethereum.ETH_IN_WEI
 import org.kethereum.ens.isPotentialENSDomain
