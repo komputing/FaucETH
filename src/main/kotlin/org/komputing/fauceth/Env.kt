@@ -3,6 +3,7 @@ package org.komputing.fauceth
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
+import io.ktor.server.util.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okio.buffer
@@ -61,6 +62,7 @@ private var listMyData = Types.newParameterizedType(MutableList::class.java, Cha
 var chainsAdapter: JsonAdapter<List<Chain>> = moshi.adapter(listMyData)
 
 val unfilteredChains = chainsAdapter.fromJson(chainsDefinitionFile.source().buffer()) ?: fail("Could not read chains.json")
+val configuredChains by lazy { unfilteredChains.filter { config.chains.contains(BigInteger.valueOf(it.chainId)) } }
 
 data class AddressInfo(
     var requestedTime: Long,
@@ -84,8 +86,6 @@ class ExtendedChainInfo(
 )
 
 val chains: MutableSet<ExtendedChainInfo> = CopyOnWriteArraySet()
-
-
 
 val keywords = listOf(
     listOf("fauceth", "faucet"),

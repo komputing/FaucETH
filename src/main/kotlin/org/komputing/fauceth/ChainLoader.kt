@@ -9,7 +9,7 @@ import org.komputing.fauceth.util.log
 import java.math.BigInteger
 
 fun CoroutineScope.loadChains() {
-    unfilteredChains.filter { config.chains.contains(BigInteger.valueOf(it.chainId)) }.forEach {
+    configuredChains.forEach {
         launch(Dispatchers.IO) {
             val rpcURL = it.rpc.first().replace("\${INFURA_API_KEY}", config.infuraProject ?: "none")
 
