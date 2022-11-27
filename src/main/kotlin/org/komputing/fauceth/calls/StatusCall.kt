@@ -4,6 +4,7 @@ import io.ktor.server.application.*
 import io.ktor.server.html.*
 import io.ktor.util.pipeline.*
 import kotlinx.html.*
+import org.ethereum.lists.chains.model.Chain
 import org.kethereum.ETH_IN_WEI
 import org.kethereum.crypto.toAddress
 import org.komputing.fauceth.*
@@ -24,14 +25,26 @@ internal suspend fun PipelineContext<Unit, ApplicationCall>.statusCall() {
             chains.forEach { chainInfo ->
                 renderCard(chainInfo)
             }
+
+            val loadingChains = configuredChains.filter { configuredChain -> chains.none { it.staticChainInfo.chainId == configuredChain.chainId } }
+            loadingChains.forEach { chain ->
+                renderCard(chain)
+            }
         }
     }
 }
 
-private fun BODY.renderCard(chainInfo: ExtendedChainInfo) = div(classes = "card") {
-    h2 {
-        +chainInfo.staticChainInfo.name
+private fun BODY.renderCard(chainInfo: Chain) = div(classes = "card") {
+    renderStaticInfo(chainInfo)
+    keyValueHTML("Status") {
+        +"Loading"
     }
+}
+
+private fun BODY.renderCard(chainInfo: ExtendedChainInfo) = div(classes = "card") {
+
+    renderStaticInfo(chainInfo.staticChainInfo)
+
     keyValueHTML("pending Nonce") { +chainInfo.pendingNonce.get().toString() }
     keyValueHTML("confirmed Nonce") { +chainInfo.confirmedNonce.get().toString() }
     chainInfo.lastSeenBalance?.let { lastSeenBalance ->
@@ -41,19 +54,6 @@ private fun BODY.renderCard(chainInfo: ExtendedChainInfo) = div(classes = "card"
         }
     }
 
-    keyValueHTML("Links") {
-        chainInfo.staticChainInfo.explorers?.firstOrNull()?.let {
-            a {
-                href = it.url + "/address/" + config.keyPair.toAddress().toString()
-                +"explorer"
-            }
-        }
-        +" | "
-        a {
-            href = "/?chain=" + chainInfo.staticChainInfo.chainId
-            +"deep"
-        }
-    }
 
     chainInfo.lastRequested?.let { lastRequested ->
         keyValueHTML("Last Request") { +lastRequested.toRelativeTimeString() }
@@ -74,5 +74,31 @@ private fun BODY.renderCard(chainInfo: ExtendedChainInfo) = div(classes = "card"
 
     chainInfo.errorSet.forEach {
         keyValueHTML("Error") { +it }
+    }
+}
+
+private fun DIV.renderStaticInfo(chainInfo: Chain) {
+
+    h2 {
+        +chainInfo.name
+    }
+    keyValueHTML("Links") {
+        chainInfo.explorers?.firstOrNull()?.let {
+            a {
+                href = it.url + "/address/" + config.keyPair.toAddress().toString()
+                +"explorer"
+            }
+        }
+        +" | "
+        a {
+            href = "/?chain=" + chainInfo.chainId
+            +"deep"
+        }
+
+        +" | "
+        a {
+            href = "/chainInfo?chain=" + chainInfo.chainId
+            +"config"
+        }
     }
 }
