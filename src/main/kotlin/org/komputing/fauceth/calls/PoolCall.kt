@@ -15,7 +15,7 @@ import org.komputing.fauceth.util.log
 import org.komputing.fauceth.util.toRelativeTimeString
 
 internal suspend fun PipelineContext<Unit, ApplicationCall>.poolCall() {
-    log(FaucethLogLevel.VERBOSE, "Serving /status")
+    log(FaucethLogLevel.VERBOSE, "Serving /pool")
     val chain = call.parameters["chain"]
     call.respondHtml {
         head {

@@ -19,6 +19,7 @@ internal fun Application.configureRouting() {
         get("/") { indexCall() }
         get("/status") { statusCall() }
         get("/pool") { poolCall() }
+        get("/chainInfo") { chainInfoCall() }
         get("/address") { addressCall() }
 
         post("/request") { requestCall() }
