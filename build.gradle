@@ -55,7 +55,7 @@ dependencies {
     implementation "com.github.ethereum-lists:chains:1.6"
 
     implementation "com.natpryce:konfig:1.6.10.0"
-    implementation "com.github.walleth:khex:0.6"
+    implementation "com.github.walleth:khex:1.1.5"
 
     testImplementation 'org.amshove.kluent:kluent:1.72'
     testImplementation "org.jetbrains.kotlin:kotlin-test:${kotlin_version}"
